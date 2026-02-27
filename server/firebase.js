@@ -9,17 +9,23 @@ dotenv.config();
 if (!admin.apps.length) {
   let credential;
   
-  // Try to load from file path first (new way)
-  const saPath = process.env.FIREBASE_SERVICE_ACCOUNT;
-  if (saPath) {
+  const saValue = process.env.FIREBASE_SERVICE_ACCOUNT;
+  if (saValue) {
+    const trimmed = saValue.trim();
     try {
-      const fullPath = path.isAbsolute(saPath) ? saPath : path.join(__dirname, saPath);
-      const saContent = fs.readFileSync(fullPath, 'utf8');
-      credential = admin.credential.cert(JSON.parse(saContent));
-      console.log("✅ Firebase credentials loaded from file:", saPath);
+      if (trimmed.startsWith("{")) {
+        const serviceAccount = JSON.parse(trimmed.replace(/\\n/g, "\n"));
+        credential = admin.credential.cert(serviceAccount);
+        console.log("✅ Firebase credentials loaded from FIREBASE_SERVICE_ACCOUNT JSON");
+      } else {
+        const fullPath = path.isAbsolute(trimmed) ? trimmed : path.join(__dirname, trimmed);
+        const saContent = fs.readFileSync(fullPath, 'utf8');
+        credential = admin.credential.cert(JSON.parse(saContent));
+        console.log("✅ Firebase credentials loaded from file:", trimmed);
+      }
     } catch (error) {
-      console.error("❌ Failed to load service account from file:", error.message);
-      throw new Error("FIREBASE_SERVICE_ACCOUNT file not found or invalid");
+      console.error("❌ Failed to load FIREBASE_SERVICE_ACCOUNT:", error.message);
+      throw new Error("FIREBASE_SERVICE_ACCOUNT is invalid (use JSON string or valid file path)");
     }
   } else {
     throw new Error("FIREBASE_SERVICE_ACCOUNT is missing");
