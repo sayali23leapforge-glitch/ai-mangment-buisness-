@@ -60,7 +60,7 @@ In the Render dashboard, add these environment variables (get values from your `
 #### QuickBooks (Optional - if using QuickBooks integration)
 - `QUICKBOOKS_CLIENT_ID`
 - `QUICKBOOKS_CLIENT_SECRET`
-- `QUICKBOOKS_REDIRECT_URI` - Set this to `https://your-app-name.onrender.com/api/quickbooks/callback`
+- `QUICKBOOKS_REDIRECT_URI` - Set this to `https://ai-mangment-buisness.onrender.com/api/quickbooks/callback`
 
 #### Shopify (Optional - if using Shopify integration)
 - `SHOPIFY_API_KEY`
@@ -68,33 +68,33 @@ In the Render dashboard, add these environment variables (get values from your `
 
 #### Other
 - `NODE_ENV` - Set to `production`
-- `CLIENT_DOMAIN` - Set to `https://your-app-name.onrender.com`
+- `CLIENT_DOMAIN` - Set to `https://nayance.com`
 
 ### 4. Deploy
 
 1. Click **"Create Web Service"**
 2. Render will automatically build and deploy your application
 3. Wait for the build to complete (usually 5-10 minutes)
-4. Your app will be available at `https://your-app-name.onrender.com`
+4. Your app will be available at `https://ai-mangment-buisness.onrender.com`
 
 ## After Deployment
 
 ### Update Stripe Webhook URL
 
 1. Go to [Stripe Dashboard](https://dashboard.stripe.com/webhooks)
-2. Add a new webhook endpoint: `https://your-app-name.onrender.com/webhook`
+2. Add a new webhook endpoint: `https://ai-mangment-buisness.onrender.com/webhook`
 3. Select the events you want to listen to
 4. Copy the webhook signing secret and update the `STRIPE_WEBHOOK_SECRET` environment variable in Render
 
 ### Update QuickBooks Redirect URI
 
 1. Go to [QuickBooks Developer Portal](https://developer.intuit.com/)
-2. Update your app's redirect URI to: `https://your-app-name.onrender.com/api/quickbooks/callback`
+2. Update your app's redirect URI to: `https://ai-mangment-buisness.onrender.com/api/quickbooks/callback`
 
 ### Update Shopify App URL
 
 1. Go to [Shopify Partners Dashboard](https://partners.shopify.com/)
-2. Update your app's URL to: `https://your-app-name.onrender.com`
+2. Update your app's URL to: `https://ai-mangment-buisness.onrender.com`
 
 ## Troubleshooting
 

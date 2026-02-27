@@ -11,7 +11,7 @@ For URL migration, replace local URLs with your Render URL.
 NODE_ENV=production
 PORT=10000
 
-CLIENT_DOMAIN=https://your-frontend-domain.com
+CLIENT_DOMAIN=https://nayance.com
 
 STRIPE_SECRET_KEY=sk_live_YOUR_SECRET_KEY
 STRIPE_WEBHOOK_SECRET=whsec_YOUR_WEBHOOK_SECRET
@@ -27,12 +27,12 @@ VITE_FIREBASE_APP_ID=your_app_id
 
 SHOPIFY_API_KEY=optional_shopify_api_key
 SHOPIFY_API_SECRET=optional_shopify_api_secret
-SHOPIFY_APP_URL=https://your-render-backend.onrender.com
-SHOPIFY_REDIRECT_URI=https://your-render-backend.onrender.com/api/shopify/oauth/callback
+SHOPIFY_APP_URL=https://ai-mangment-buisness.onrender.com
+SHOPIFY_REDIRECT_URI=https://ai-mangment-buisness.onrender.com/api/shopify/oauth/callback
 
 QUICKBOOKS_CLIENT_ID=optional_quickbooks_client_id
 QUICKBOOKS_CLIENT_SECRET=optional_quickbooks_client_secret
-QUICKBOOKS_REDIRECT_URI=https://your-render-backend.onrender.com/api/quickbooks/callback
+QUICKBOOKS_REDIRECT_URI=https://ai-mangment-buisness.onrender.com/api/quickbooks/callback
 ```
 
 ---
@@ -40,7 +40,7 @@ QUICKBOOKS_REDIRECT_URI=https://your-render-backend.onrender.com/api/quickbooks/
 ## 2) Frontend `.env` for production build
 
 ```env
-VITE_API_URL=https://your-render-backend.onrender.com
+VITE_API_URL=https://ai-mangment-buisness.onrender.com
 
 VITE_EMAILJS_PUBLIC_KEY=your_emailjs_public_key
 VITE_EMAILJS_SERVICE_ID=service_xxxxx
@@ -62,7 +62,7 @@ VITE_STRIPE_PRICE_PRO_YEARLY=price_xxx
 ```env
 NODE_ENV=production
 PORT=10000
-CLIENT_DOMAIN=https://your-frontend-domain.com
+CLIENT_DOMAIN=https://nayance.com
 STRIPE_SECRET_KEY=sk_live_YOUR_SECRET_KEY
 STRIPE_WEBHOOK_SECRET=whsec_YOUR_WEBHOOK_SECRET
 FIREBASE_SERVICE_ACCOUNT={...json service account...}
@@ -73,7 +73,7 @@ FIREBASE_SERVICE_ACCOUNT={...json service account...}
 ## 4) Wix / Client-side integration ENV-style mapping
 
 ```env
-WIX_PUBLIC_API_BASE=https://your-render-backend.onrender.com
+WIX_PUBLIC_API_BASE=https://ai-mangment-buisness.onrender.com
 WIX_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
 WIX_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
 WIX_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
@@ -106,5 +106,5 @@ FIREBASE_SERVICE_ACCOUNT=./firebase-adminsdk.json
 
 ## URL Replacement Rule
 
-- Replace every `http://localhost:4242` with `https://your-render-backend.onrender.com`
-- Replace every `http://localhost:5173` (or 3000/3001) with your deployed frontend URL
+- Replace every `http://localhost:4242` with `https://ai-mangment-buisness.onrender.com`
+- Replace every `http://localhost:5173` (or 3000/3001) with `https://nayance.com`

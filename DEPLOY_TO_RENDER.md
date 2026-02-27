@@ -243,12 +243,12 @@ View in Render dashboard:
 ## 🎉 You're Live!
 
 Once deployed, your app will be available at:
-**`https://your-app-name.onrender.com`**
+**`https://ai-mangment-buisness.onrender.com`**
 
 Both frontend and backend are served from this single URL:
-- Frontend: `https://your-app-name.onrender.com/`
-- API: `https://your-app-name.onrender.com/api/*`
-- Health: `https://your-app-name.onrender.com/health`
+- Frontend: `https://ai-mangment-buisness.onrender.com/`
+- API: `https://ai-mangment-buisness.onrender.com/api/*`
+- Health: `https://ai-mangment-buisness.onrender.com/health`
 
 ---
 
