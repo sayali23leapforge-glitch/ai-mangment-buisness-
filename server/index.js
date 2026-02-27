@@ -1,0 +1,690 @@
+const express = require("express");
+const stripe = require("stripe");
+const cors = require("cors");
+const dotenv = require("dotenv");
+const axios = require("axios");
+const path = require("path");
+const quickbooksRoutes = require("./routes/quickbooksRoutes");
+const shopifyRoutes = require("./routes/shopifyRoutes");
+const { db: firestore } = require("./firebase"); // Import Firestore
+
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 3001;
+
+// Try to use PORT, if it fails try another
+const server = app.listen(PORT, () => {
+  console.log(`🚀 Stripe server running on http://localhost:${PORT}`);
+  console.log(`📝 Webhook endpoint: http://localhost:${PORT}/webhook`);
+}).on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.log(`Port ${PORT} in use, trying port 5000...`);
+    app.listen(5000, () => {
+      console.log(`🚀 Stripe server running on http://localhost:5000`);
+      console.log(`📝 Webhook endpoint: http://localhost:5000/webhook`);
+    });
+  }
+});
+
+// Stripe initialization
+// Uses env key in production; placeholder fallback for local boot without exposing secrets
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "sk_test_placeholder";
+const stripeClient = stripe(STRIPE_SECRET_KEY);
+
+// Verify Stripe is configured
+if (!STRIPE_SECRET_KEY) {
+  console.warn("⚠️ WARNING: Stripe Secret Key is not configured!");
+  console.warn("📝 Using test key from code");
+} else {
+  console.log("✅ Stripe is configured and ready!");
+  console.log(`🔑 Using Stripe API key: ${STRIPE_SECRET_KEY.substring(0, 20)}...`);
+}
+
+// Middleware
+app.use(cors({
+  origin: function(origin, callback) {
+    // Allow all localhost ports and specified domains
+    if (!origin || origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:') || origin === process.env.CLIENT_DOMAIN) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Allow for development - can be more restrictive in production
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
+
+// Body parser middleware - important for webhook and large image uploads
+app.use(express.json({ limit: "50mb" })); // Allow up to 50MB for base64 images
+
+// Store raw body for webhook verification
+app.use((req, res, next) => {
+  if (req.path === "/webhook") {
+    let rawBody = "";
+    req.setEncoding("utf8");
+    req.on("data", chunk => {
+      rawBody += chunk;
+    });
+    req.on("end", () => {
+      req.rawBody = rawBody;
+      next();
+    });
+  } else {
+    next();
+  }
+});
+
+// Health check
+app.get("/health", (req, res) => {
+  res.json({ status: "Server is running" });
+});
+
+// Integrations access check - Always allow (tier gating happens on frontend)
+app.get("/api/integrations/access", async (req, res) => {
+  res.json({ 
+    allowed: true,
+    message: "Integrations access granted",
+    tier: "growth" 
+  });
+});
+
+// Demo checkout endpoint (for testing without valid Stripe price IDs)
+app.post("/demo-checkout-session", async (req, res) => {
+  try {
+    const { uid, plan, billingCycle } = req.body;
+    
+    if (!uid || !plan || !billingCycle) {
+      return res.status(400).json({
+        error: "Missing required fields: uid, plan, billingCycle",
+      });
+    }
+
+    const origin = req.headers.origin || "http://localhost:3000";
+    const successUrl = `${origin}/billing-plan?success=true&plan=${plan}&cycle=${billingCycle}`;
+
+    console.log(`📝 Demo checkout for:`, { uid, plan, billingCycle });
+
+    // Return a mock Stripe session URL (redirects back to success page)
+    res.json({ 
+      sessionUrl: successUrl,
+      sessionId: `demo_${uid}_${Date.now()}`,
+      isDemoMode: true,
+    });
+  } catch (error) {
+    console.error("❌ Demo checkout error:", error);
+    res.status(500).json({
+      error: error.message || "Failed to create demo checkout session",
+    });
+  }
+});
+
+// Health check endpoint
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+app.post("/health", (req, res) => {
+  res.json({ status: "ok", received: "POST", timestamp: new Date().toISOString() });
+});
+
+// QuickBooks routes
+app.use("/api/quickbooks", quickbooksRoutes);
+
+// Shopify routes
+app.use("/api/shopify", shopifyRoutes);
+
+// Test Shopify connection endpoint
+app.post("/api/shopify/test", async (req, res) => {
+  try {
+    const { shopUrl, accessToken } = req.body;
+
+    if (!shopUrl || !accessToken) {
+      return res.status(400).json({ error: "Missing shopUrl or accessToken" });
+    }
+
+    // Format shop URL
+    let formattedShopUrl = shopUrl.replace(/^https?:\/\//, "").replace(/\/$/, "");
+    if (!formattedShopUrl.includes(".myshopify.com") && !formattedShopUrl.includes(".")) {
+      formattedShopUrl = `${formattedShopUrl}.myshopify.com`;
+    }
+
+    console.log("Testing Shopify connection for:", formattedShopUrl);
+
+    // Test the connection by fetching shop info (works with valid token, no special scope needed)
+    const response = await axios.get(
+      `https://${formattedShopUrl}/admin/api/2024-01/shop.json`,
+      {
+        headers: {
+          "X-Shopify-Access-Token": accessToken,
+          "Content-Type": "application/json",
+        },
+        timeout: 10000,
+      }
+    );
+
+    console.log("Shopify connection successful for:", response.data.shop?.name);
+    res.json({
+      success: true,
+      shop: response.data.shop,
+      message: "Shopify connection successful",
+    });
+  } catch (error) {
+    const statusCode = error.response?.status || 401;
+    const errorMsg = error.response?.data?.errors || error.message;
+    
+    console.error("Shopify test error:", {
+      status: statusCode,
+      message: errorMsg,
+      url: error.config?.url,
+    });
+    
+    res.status(statusCode).json({
+      error: "Failed to connect to Shopify. Please verify your store URL and access token.",
+      details: errorMsg,
+    });
+  }
+});
+
+// Fetch Shopify Products endpoint (with pagination support)
+app.post("/api/shopify/products", async (req, res) => {
+  try {
+    const { shopUrl, accessToken } = req.body;
+
+    if (!shopUrl || !accessToken) {
+      return res.status(400).json({ error: "Missing shopUrl or accessToken" });
+    }
+
+    let formattedShopUrl = shopUrl.replace(/^https?:\/\//, "").replace(/\/$/, "");
+    if (!formattedShopUrl.includes(".myshopify.com") && !formattedShopUrl.includes(".")) {
+      formattedShopUrl = `${formattedShopUrl}.myshopify.com`;
+    }
+
+    let allProducts = [];
+    let cursor = null;
+    let hasNextPage = true;
+
+    // Fetch all products with pagination
+    while (hasNextPage) {
+      let url = `https://${formattedShopUrl}/admin/api/2024-01/products.json?limit=250&fields=id,title,handle,bodyHtml,vendor,productType,createdAt,updatedAt,publishedAt,image,images,variants`;
+      if (cursor) {
+        url += `&after=${cursor}`;
+      }
+
+      const response = await axios.get(url, {
+        headers: {
+          "X-Shopify-Access-Token": accessToken,
+          "Content-Type": "application/json",
+        },
+      });
+
+      const products = response.data.products || [];
+      
+      // Fetch inventory levels for each product's variants
+      for (const product of products) {
+        if (product.variants && product.variants.length > 0) {
+          for (const variant of product.variants) {
+            try {
+              const inventoryUrl = `https://${formattedShopUrl}/admin/api/2024-01/variants/${variant.id}.json`;
+              const inventoryResponse = await axios.get(inventoryUrl, {
+                headers: {
+                  "X-Shopify-Access-Token": accessToken,
+                  "Content-Type": "application/json",
+                },
+              });
+              const variantData = inventoryResponse.data.variant;
+              variant.inventory_quantity = variantData.inventory_quantity || 0;
+              variant.stock = variantData.inventory_quantity || 0;
+              variant.price = variantData.price || 0;
+              variant.cost = variantData.cost || 0;
+              console.log(`📦 Variant ${variant.id}: price=$${variant.price}, inventory=${variant.inventory_quantity}`);
+            } catch (inventoryError) {
+              console.error(`Failed to fetch inventory for variant ${variant.id}:`, inventoryError.message);
+              variant.inventory_quantity = 0;
+              variant.stock = 0;
+            }
+          }
+        }
+      }
+      
+      allProducts = allProducts.concat(products);
+
+      // Check if there's a next page
+      const linkHeader = response.headers.link || "";
+      const nextMatch = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
+      
+      if (nextMatch) {
+        const nextUrl = nextMatch[1];
+        const afterMatch = nextUrl.match(/after=([^&]+)/);
+        cursor = afterMatch ? afterMatch[1] : null;
+        hasNextPage = !!cursor;
+      } else {
+        hasNextPage = false;
+      }
+    }
+
+    console.log(`✅ Fetched ${allProducts.length} products from Shopify (with pagination)`);
+    
+    // Log all products with real data
+    allProducts.forEach((product, idx) => {
+      const variant = product.variants?.[0];
+      console.log(`[${idx + 1}] ${product.title}: Price=$${variant?.price || 0}, Stock=${variant?.inventory_quantity || variant?.stock || 0}, Cost=$${variant?.cost || 0}`);
+    });
+
+    res.json({
+      success: true,
+      products: allProducts,
+    });
+  } catch (error) {
+    const statusCode = error.response?.status || 401;
+    console.error("Shopify products fetch error:", error.message);
+    res.status(statusCode).json({
+      error: "Failed to fetch products from Shopify",
+      details: error.message,
+    });
+  }
+});
+
+// Fetch Shopify Orders endpoint (with pagination support)
+app.post("/api/shopify/orders", async (req, res) => {
+  try {
+    const { shopUrl, accessToken } = req.body;
+
+    if (!shopUrl || !accessToken) {
+      return res.status(400).json({ error: "Missing shopUrl or accessToken" });
+    }
+
+    let formattedShopUrl = shopUrl.replace(/^https?:\/\//, "").replace(/\/$/, "");
+    if (!formattedShopUrl.includes(".myshopify.com") && !formattedShopUrl.includes(".")) {
+      formattedShopUrl = `${formattedShopUrl}.myshopify.com`;
+    }
+
+    let allOrders = [];
+    let cursor = null;
+    let hasNextPage = true;
+
+    // Fetch all orders with pagination
+    while (hasNextPage) {
+      let url = `https://${formattedShopUrl}/admin/api/2024-01/orders.json?status=any&limit=250`;
+      if (cursor) {
+        url += `&after=${cursor}`;
+      }
+
+      const response = await axios.get(url, {
+        headers: {
+          "X-Shopify-Access-Token": accessToken,
+          "Content-Type": "application/json",
+        },
+      });
+
+      const orders = response.data.orders || [];
+      allOrders = allOrders.concat(orders);
+
+      // Check if there's a next page
+      const linkHeader = response.headers.link || "";
+      const nextMatch = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
+      
+      if (nextMatch) {
+        const nextUrl = nextMatch[1];
+        const afterMatch = nextUrl.match(/after=([^&]+)/);
+        cursor = afterMatch ? afterMatch[1] : null;
+        hasNextPage = !!cursor;
+      } else {
+        hasNextPage = false;
+      }
+    }
+
+    console.log(`✅ Fetched ${allOrders.length} orders from Shopify (with pagination)`);
+
+    res.json({
+      success: true,
+      orders: allOrders,
+    });
+  } catch (error) {
+    const statusCode = error.response?.status || 401;
+    console.error("Shopify orders fetch error:", error.message);
+    res.status(statusCode).json({
+      error: "Failed to fetch orders from Shopify",
+      details: error.message,
+    });
+  }
+});
+
+// Fetch Shopify Inventory endpoint (with pagination support)
+app.post("/api/shopify/inventory", async (req, res) => {
+  try {
+    const { shopUrl, accessToken } = req.body;
+
+    if (!shopUrl || !accessToken) {
+      return res.status(400).json({ error: "Missing shopUrl or accessToken" });
+    }
+
+    let formattedShopUrl = shopUrl.replace(/^https?:\/\//, "").replace(/\/$/, "");
+    if (!formattedShopUrl.includes(".myshopify.com") && !formattedShopUrl.includes(".")) {
+      formattedShopUrl = `${formattedShopUrl}.myshopify.com`;
+    }
+
+    let allInventory = [];
+    let cursor = null;
+    let hasNextPage = true;
+
+    // Fetch all inventory levels with pagination
+    while (hasNextPage) {
+      let url = `https://${formattedShopUrl}/admin/api/2024-01/inventory_levels.json?limit=250`;
+      if (cursor) {
+        url += `&after=${cursor}`;
+      }
+
+      const response = await axios.get(url, {
+        headers: {
+          "X-Shopify-Access-Token": accessToken,
+          "Content-Type": "application/json",
+        },
+      });
+
+      const inventory = response.data.inventory_levels || [];
+      allInventory = allInventory.concat(inventory);
+
+      // Check if there's a next page
+      const linkHeader = response.headers.link || "";
+      const nextMatch = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
+      
+      if (nextMatch) {
+        const nextUrl = nextMatch[1];
+        const afterMatch = nextUrl.match(/after=([^&]+)/);
+        cursor = afterMatch ? afterMatch[1] : null;
+        hasNextPage = !!cursor;
+      } else {
+        hasNextPage = false;
+      }
+    }
+
+    console.log(`✅ Fetched ${allInventory.length} inventory items from Shopify (with pagination)`);
+
+    res.json({
+      success: true,
+      inventory: allInventory,
+    });
+  } catch (error) {
+    const statusCode = error.response?.status || 401;
+    console.error("Shopify inventory fetch error:", error.message);
+    res.status(statusCode).json({
+      error: "Failed to fetch inventory from Shopify",
+      details: error.message,
+    });
+  }
+});
+
+// Create checkout session
+app.post("/create-checkout-session", async (req, res) => {
+  try {
+    const { uid, priceId, billingCycle, plan } = req.body;
+
+    console.log(`📍 Checkout request received:`, { uid, priceId, billingCycle, plan });
+
+    if (!uid || !priceId || !billingCycle) {
+      console.warn("❌ Missing fields in request");
+      return res.status(400).json({
+        error: "Missing required fields: uid, priceId, billingCycle",
+      });
+    }
+
+    console.log(`💳 Using STRIPE (Test Mode for localhost, Live Mode for production)...`);
+    
+    let customerEmail = "customer@example.com";
+
+    // Try to get user email from Firestore if available
+    if (firestore && firestore.collection) {
+      try {
+        const userDoc = await firestore.collection("users").doc(uid).get();
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          customerEmail = userData?.email || userData?.emailAddress || customerEmail;
+        }
+      } catch (error) {
+        console.warn("⚠️ Could not fetch user from Firestore:", error.message);
+      }
+    }
+
+    // Get the origin from request headers or use localhost
+    const origin = req.headers.origin || "http://localhost:3000";
+    
+    // Generate success and cancel URLs
+    const successUrl = `${origin}/billing-plan?success=true&plan=${plan || extractPlanFromPrice(priceId)}&cycle=${billingCycle}`;
+    const cancelUrl = `${origin}/billing-plan`;
+
+    console.log(`📝 Creating Stripe checkout:`, {
+      uid,
+      email: customerEmail,
+      priceId,
+      billingCycle,
+      successUrl,
+      cancelUrl,
+    });
+
+    // Validate price ID format
+    if (!priceId.startsWith("price_")) {
+      console.warn("⚠️ Invalid price ID format:", priceId);
+      return res.status(400).json({
+        error: "Invalid price ID format. Expected format: price_xxxxx",
+      });
+    }
+
+    try {
+      // Step 1: Create or retrieve Stripe customer (required for Accounts V2)
+      let customerId;
+      
+      try {
+        // Search for existing customer by email
+        const customers = await stripeClient.customers.list({
+          email: customerEmail,
+          limit: 1,
+        });
+        
+        if (customers.data.length > 0) {
+          customerId = customers.data[0].id;
+          console.log(`✅ Found existing Stripe customer: ${customerId}`);
+        } else {
+          // Create new customer
+          const customer = await stripeClient.customers.create({
+            email: customerEmail,
+            metadata: {
+              uid,
+              createdAt: new Date().toISOString(),
+            },
+          });
+          customerId = customer.id;
+          console.log(`✅ Created new Stripe customer: ${customerId}`);
+        }
+      } catch (customerError) {
+        console.error("⚠️ Could not manage customer, will attempt checkout anyway:", customerError.message);
+        // Continue without customer - may fail with V2 accounts
+      }
+
+      // Step 2: Create checkout session with customer ID
+      const sessionParams = {
+        payment_method_types: ["card"],
+        line_items: [
+          {
+            price: priceId,
+            quantity: 1,
+          },
+        ],
+        mode: "subscription",
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+        metadata: {
+          uid,
+          billingCycle,
+        },
+        allow_promotion_codes: true,
+        billing_address_collection: "auto",
+      };
+
+      // Add customer ID if available
+      if (customerId) {
+        sessionParams.customer = customerId;
+      } else {
+        // Fallback for older Stripe setups
+        sessionParams.customer_email = customerEmail;
+      }
+
+      const session = await stripeClient.checkout.sessions.create(sessionParams);
+
+      console.log(`✅ Stripe session created:`, {
+        sessionId: session.id,
+        url: session.url,
+        customerId,
+      });
+
+      res.json({ 
+        sessionUrl: session.url,
+        sessionId: session.id,
+        isDemoMode: false,
+      });
+    } catch (stripeError) {
+      console.error("❌ STRIPE ERROR - FULL DETAILS:");
+      console.error("Message:", stripeError.message);
+      console.error("Type:", stripeError.type);
+      console.error("Status Code:", stripeError.statusCode);
+      console.error("Request ID:", stripeError.requestId);
+      console.error("Param:", stripeError.param);
+      console.error("Raw Error:", stripeError);
+
+      let errorMsg = "Stripe Error: ";
+      let statusCode = 500;
+
+      if (stripeError.message.includes("No such price")) {
+        errorMsg = `❌ Price ID '${priceId}' not found in Stripe account.\n`;
+        errorMsg += "Please verify this price ID exists in your Stripe Dashboard under Products & Prices.";
+        statusCode = 400;
+      } else if (stripeError.message.includes("Invalid API Key") || stripeError.message.includes("authentication")) {
+        errorMsg = "Stripe API key is invalid or expired. Check your .env configuration.";
+        statusCode = 400;
+      } else if (stripeError.statusCode === 401) {
+        errorMsg = "Stripe authentication failed. Invalid API key.";
+        statusCode = 400;
+      } else {
+        errorMsg += stripeError.message;
+      }
+
+      console.log(`📤 Sending error response: ${statusCode} - ${errorMsg}`);
+
+      res.status(statusCode).json({ 
+        error: errorMsg,
+        stripeErrorMessage: stripeError.message,
+        stripeErrorType: stripeError.type,
+        priceIdTested: priceId,
+      });
+    }
+  } catch (error) {
+    console.error("❌ Checkout session error:", error);
+    res.status(500).json({
+      error: error.message || "Failed to create checkout session",
+    });
+  }
+});
+
+// Helper function to extract plan name from price ID
+function extractPlanFromPrice(priceId) {
+  if (priceId.includes("growth")) return "growth";
+  if (priceId.includes("pro")) return "pro";
+  return "unknown";
+}
+
+// Webhook handler
+app.post("/webhook", async (req, res) => {
+  try {
+    const sig = req.headers["stripe-signature"];
+    const rawBody = req.rawBody;
+
+    if (!sig || !rawBody) {
+      return res.status(400).json({ error: "Missing signature or body" });
+    }
+
+    let event;
+
+    try {
+      event = stripeClient.webhooks.constructEvent(
+        rawBody,
+        sig,
+        process.env.STRIPE_WEBHOOK_SECRET
+      );
+    } catch (err) {
+      console.error("Webhook signature verification failed:", err.message);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    // Handle different event types
+    switch (event.type) {
+      case "checkout.session.completed":
+        console.log("✅ Checkout session completed:", {
+          sessionId: event.data.object.id,
+          customerId: event.data.object.customer,
+          email: event.data.object.customer_email,
+          amount: event.data.object.amount_total,
+        });
+        // TODO: Update user subscription status in database
+        break;
+
+      case "invoice.payment_succeeded":
+        console.log("✅ Invoice payment succeeded:", {
+          invoiceId: event.data.object.id,
+          customerId: event.data.object.customer,
+          amount: event.data.object.amount_paid,
+        });
+        // TODO: Log payment in database
+        break;
+
+      case "customer.subscription.created":
+        console.log("✅ Subscription created:", {
+          subscriptionId: event.data.object.id,
+          customerId: event.data.object.customer,
+          status: event.data.object.status,
+          planId: event.data.object.items.data[0].price.id,
+        });
+        // TODO: Save subscription to database
+        break;
+
+      case "customer.subscription.updated":
+        console.log("✅ Subscription updated:", {
+          subscriptionId: event.data.object.id,
+          customerId: event.data.object.customer,
+          status: event.data.object.status,
+        });
+        // TODO: Update subscription in database
+        break;
+
+      case "customer.subscription.deleted":
+        console.log("✅ Subscription deleted:", {
+          subscriptionId: event.data.object.id,
+          customerId: event.data.object.customer,
+        });
+        // TODO: Cancel subscription in database
+        break;
+
+      default:
+        console.log(`Unhandled event type: ${event.type}`);
+    }
+
+    res.json({ received: true });
+  } catch (error) {
+    console.error("Webhook error:", error);
+    res.status(500).json({ error: "Webhook processing failed" });
+  }
+});
+
+// Serve static files from the React app
+app.use(express.static(path.join(__dirname, "../dist")));
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error("Server error:", err);
+  res.status(500).json({ error: "Internal server error" });
+});
+
+// Serve React app for all non-API routes
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "../dist", "index.html"));
+});

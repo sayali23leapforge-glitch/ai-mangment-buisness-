@@ -1,0 +1,187 @@
+/* Integration Status Widget Styles */
+
+.integration-status-widget {
+  background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 20px 0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.status-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.status-header h3 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.status-badge {
+  display: inline-block;
+  background: rgba(74, 222, 128, 0.2);
+  color: #4ade80;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.connections-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.connection-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.3s ease;
+}
+
+.connection-card.connected {
+  background: rgba(74, 222, 128, 0.1);
+  border-color: rgba(74, 222, 128, 0.3);
+}
+
+.connection-card.disconnected {
+  opacity: 0.6;
+}
+
+.connection-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.connection-icon {
+  font-size: 24px;
+  min-width: 30px;
+}
+
+.connection-info {
+  flex: 1;
+}
+
+.connection-name {
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.connection-status {
+  color: #999;
+  font-size: 11px;
+}
+
+.connection-card.connected .connection-status {
+  color: #4ade80;
+  font-weight: 600;
+}
+
+.active-features {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.active-features h4 {
+  margin: 0 0 10px 0;
+  color: #d4af37;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.features-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.feature-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.feature-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.feature-icon {
+  font-size: 18px;
+  min-width: 20px;
+  text-align: center;
+}
+
+.feature-details {
+  flex: 1;
+}
+
+.feature-name {
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.feature-description {
+  color: #888;
+  font-size: 11px;
+}
+
+.feature-status {
+  color: #4ade80;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.connection-message {
+  background: rgba(212, 175, 55, 0.1);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 6px;
+  padding: 10px;
+  color: #d4af37;
+  font-size: 12px;
+  text-align: center;
+}
+
+.connection-message p {
+  margin: 0;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .connections-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .integration-status-widget {
+    padding: 16px;
+    margin: 16px 0;
+  }
+}

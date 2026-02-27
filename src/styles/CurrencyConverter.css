@@ -1,0 +1,235 @@
+/* Currency Converter Styles */
+
+.currency-converter {
+  background: linear-gradient(135deg, #f5e6d3 0%, #e8d4c4 100%);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 20px 0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 2px solid rgba(212, 175, 55, 0.2);
+  animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.currency-converter.currency-locked {
+  opacity: 0.6;
+  background: linear-gradient(135deg, #f0f0f0 0%, #e8e8e8 100%);
+  text-align: center;
+}
+
+.currency-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid rgba(212, 175, 55, 0.3);
+}
+
+.currency-icon {
+  font-size: 24px;
+}
+
+.currency-header h3 {
+  margin: 0;
+  color: #1a1a1a;
+  font-size: 18px;
+  flex: 1;
+}
+
+.pro-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #d4af37 0%, #f4d03f 100%);
+  color: #1a1a1a;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.currency-selector-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.currency-selector-group label {
+  font-weight: 600;
+  color: #1a1a1a;
+  min-width: 120px;
+}
+
+.currency-selector-group select {
+  flex: 1;
+  padding: 10px 14px;
+  border: 2px solid rgba(212, 175, 55, 0.3);
+  border-radius: 6px;
+  background: white;
+  color: #1a1a1a;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.currency-selector-group select:hover:not(:disabled) {
+  border-color: #d4af37;
+  box-shadow: 0 2px 8px rgba(212, 175, 55, 0.2);
+}
+
+.currency-selector-group select:focus {
+  outline: none;
+  border-color: #d4af37;
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+}
+
+.currency-selector-group select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.loading-spinner {
+  position: absolute;
+  right: 12px;
+  font-size: 20px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.conversion-preview {
+  background: white;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.conversion-preview h4 {
+  margin: 0 0 12px 0;
+  color: #1a1a1a;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.conversion-table {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.conversion-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  background: #f9f9f9;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.conversion-row:hover {
+  background: #f0f0f0;
+}
+
+.product-name {
+  flex: 1;
+  color: #333;
+  font-weight: 500;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.original-price {
+  color: #999;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.arrow {
+  color: #d4af37;
+  font-weight: bold;
+}
+
+.converted-price {
+  color: #d4af37;
+  font-weight: 700;
+  font-size: 13px;
+  min-width: 80px;
+  text-align: right;
+}
+
+.more-items {
+  color: #999;
+  font-size: 12px;
+  text-align: center;
+  margin: 8px 0 0 0;
+}
+
+.currency-info {
+  background: rgba(212, 175, 55, 0.1);
+  border-left: 4px solid #d4af37;
+  padding: 12px;
+  border-radius: 4px;
+  color: #666;
+  font-size: 13px;
+}
+
+.currency-info p {
+  margin: 0;
+}
+
+/* Locked state */
+.currency-converter.currency-locked p {
+  color: #999;
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .currency-selector-group {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .currency-selector-group label {
+    min-width: auto;
+  }
+
+  .currency-selector-group select {
+    width: 100%;
+  }
+
+  .conversion-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .converted-price {
+    text-align: left;
+  }
+}

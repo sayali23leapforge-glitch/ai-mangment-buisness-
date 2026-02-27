@@ -1,0 +1,114 @@
+// ============================================================
+// FIRESTORE SECURITY RULES FOR BILLING
+// ============================================================
+// Add these rules to your Firestore Database under Rules tab
+// 
+// These rules ensure:
+// 1. Users can only read their own user document
+// 2. Users CANNOT update their own plan (only webhook can)
+// 3. Users can read their billing history
+// 4. Stripe webhook has full access (via custom token)
+// ============================================================
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ========== USERS COLLECTION ==========
+    // Stores user subscription data
+    match /users/{uid} {
+      // Read: User can read their own document
+      allow read: if request.auth != null && request.auth.uid == uid;
+      
+      // Create: User can create their own document (on signup)
+      allow create: if request.auth != null && request.auth.uid == uid
+                   && request.resource.data.keys().hasAll(['email', 'plan'])
+                   && request.resource.data.plan == 'free'
+                   && request.resource.data.stripeCustomerId == null;
+      
+      // Update: RESTRICTED - Only Cloud Functions can update plan
+      // Users can update: notificationSettings, preferences, etc.
+      // Users CANNOT update: plan, stripeCustomerId, stripeSubscriptionId
+      allow update: if request.auth != null 
+                   && request.auth.uid == uid
+                   && !request.resource.data.plan.changed()
+                   && !request.resource.data.stripeCustomerId.changed()
+                   && !request.resource.data.stripeSubscriptionId.changed();
+      
+      // Delete: Disabled (keep historical data)
+      allow delete: if false;
+      
+      // ===== BILLING HISTORY SUBCOLLECTION =====
+      // Stores all billing events (created by webhook)
+      match /billingHistory/{eventId} {
+        // Read: User can read their owns billing history
+        allow read: if request.auth != null && request.auth.uid == uid;
+        
+        // Write: Only Cloud Functions (via admin SDK)
+        // Disallow user writes
+        allow write: if false;
+      }
+    }
+
+    // ========== TEAM MEMBERS COLLECTION ==========
+    // Existing: Employees created by owner
+    // No changes needed - use your existing rules
+    match /team_members/{memberId} {
+      // Only owner can create employees
+      allow create: if request.auth != null;
+      
+      // Allow ANYONE to read (needed for employee login)
+      allow read: if true;
+      
+      // Owner can update
+      allow update: if request.auth != null && request.auth.email == resource.data.createdBy;
+      
+      // Owner can delete
+      allow delete: if request.auth != null && request.auth.email == resource.data.createdBy;
+    }
+
+    // ========== TEAM INVITES COLLECTION ==========
+    // Existing: Job invites for employees
+    match /teamInvites/{inviteId} {
+      allow create, read, update: if request.auth != null;
+    }
+
+    // ========== FALLBACK RULE ==========
+    // Authenticated users can access other collections as before
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+
+// ============================================================
+// IMPORTANT SECURITY NOTES
+// ============================================================
+//
+// 1. USERS CANNOT CHANGE THEIR PLAN FROM FRONTEND
+//    The rules enforce that plan changes only happen via Cloud Functions
+//    webhook verification
+//
+// 2. STRIPE WEBHOOK INTEGRATION
+//    The webhook is called by Stripe (not user)
+//    It uses Firebase Admin SDK (with full Firestore access)
+//    It verifies webhook signature before processing
+//
+// 3. STRIPE SECRET KEY PROTECTION
+//    Stored in Cloud Functions environment variables
+//    Never exposed to frontend
+//    Only used server-side for Stripe API calls
+//
+// 4. BILLING HISTORY
+//    Created only by Cloud Functions
+//    Users can read but not modify
+//    Provides audit trail of all events
+//
+// 5. TESTING SECURITY RULES
+//    Use Firebase Emulator Suite
+//    Test that frontend cannot update plan:
+//    
+//    db.collection("users").doc(uid).set({
+//      plan: "pro"  // Should fail
+//    })

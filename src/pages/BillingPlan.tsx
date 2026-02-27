@@ -1,0 +1,554 @@
+import { useState, useEffect } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import {
+  Wallet, Boxes, ShoppingCart, BarChart2, PlusSquare,
+  QrCode, Sparkles, ReceiptText, Banknote, Link as LinkIcon,
+  Users, CreditCard, Settings, Zap, Check, X, Lock
+} from "lucide-react";
+import TopBar from "../components/TopBar";
+import { useAuth } from "../context/AuthContext";
+import { useRole } from "../context/RoleContext";
+import { hasPermission } from "../utils/rolePermissions";
+import { isMenuFeatureAvailable, getUpgradePlanForFeature } from "../utils/stripeUtils";
+import { convertCurrency, formatCurrency } from "../utils/multiCurrency";
+import { db } from "../config/firebase";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
+import "../styles/BillingPlan.css";
+
+// TODO: Replace with client's Stripe API keys - Real Stripe integration
+// const STRIPE_PUBLIC_KEY = import.meta.env.VITE_STRIPE_PUBLIC_KEY || "";
+// const STRIPE_PRICE_GROWTH_MONTHLY = import.meta.env.VITE_STRIPE_PRICE_GROWTH_MONTHLY || "";
+
+// MOCK: Temporary mock functions for development
+const createMockCheckoutSession = async (
+  priceId: string,
+  email?: string | null
+): Promise<{ sessionId: string; success: boolean }> => {
+  console.log("🎭 MOCK: Creating checkout session for price:", priceId, "email:", email);
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({
+        sessionId: `mock_session_${Date.now()}`,
+        success: true,
+      });
+    }, 500);
+  });
+};
+
+// Removed ModalState - using real Stripe checkout
+
+const BillingPlan = () => {
+  const roleContext = useRole();
+  const currentRole = roleContext?.currentRole || "user";
+  const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [_selectedRole, setSelectedRole] = useState("Owner (Full Access)");
+  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
+  const [loading, setLoading] = useState(false);
+  const [currency, setCurrency] = useState("USD");
+  const [userPlan, setUserPlan] = useState<"free" | "growth" | "pro">("free");
+  const [userBillingCycle, setUserBillingCycle] = useState<"monthly" | "yearly" | null>(null);
+  const [subscriptionEndDate, setSubscriptionEndDate] = useState<Date | null>(null);
+  const [successMessage, setSuccessMessage] = useState("");
+
+  // Fetch user's current plan from Firestore
+  useEffect(() => {
+    const fetchUserPlan = async () => {
+      if (!user?.uid) return;
+      try {
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          const plan = data?.plan || "free";
+          let cycle = data?.billing_cycle || null;
+          const endDate = data?.subscription_end_date ? new Date(data.subscription_end_date) : null;
+          
+          // Check if subscription has expired
+          if (plan !== "free" && endDate && endDate < new Date()) {
+            console.log("⏰ Subscription expired, reverting to free plan...");
+            await updateDoc(doc(db, "users", user.uid), {
+              plan: "free",
+              billing_cycle: null,
+              subscription_end_date: null,
+              updatedAt: new Date(),
+            });
+            setUserPlan("free");
+            setUserBillingCycle(null);
+            setSubscriptionEndDate(null);
+          } else {
+            // If plan is active but cycle is not set, infer from expiration date
+            if (plan !== "free" && !cycle) {
+              if (endDate) {
+                // Estimate from expiration date difference: if >300 days, likely yearly
+                const daysToExpire = Math.floor((endDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                cycle = daysToExpire > 300 ? "yearly" : "monthly";
+                console.log(`📊 Inferring cycle from expiration: ${cycle} (${daysToExpire} days to expire)`);
+              } else {
+                // Default to monthly if no expiration date
+                cycle = "monthly";
+                console.log("📊 No expiration date found, defaulting to monthly");
+              }
+              
+              // Save the inferred cycle to Firestore
+              console.log(`💾 Saving inferred billing_cycle: ${cycle}`);
+              await updateDoc(doc(db, "users", user.uid), {
+                billing_cycle: cycle,
+                updatedAt: new Date(),
+              });
+            }
+            
+            setUserPlan(plan);
+            setUserBillingCycle(cycle);
+            setSubscriptionEndDate(endDate);
+            console.log(`📋 Current plan: ${plan} (${cycle})`);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user plan:", error);
+      }
+    };
+    fetchUserPlan();
+  }, [user?.uid]);
+
+  // Handle success redirect from Stripe
+  useEffect(() => {
+    const handleSuccessRedirect = async () => {
+      if (searchParams.get("success") === "true" && user?.uid) {
+        setSuccessMessage("✅ Payment successful! Updating plan...");
+        
+        try {
+          // Get the plan and billing cycle from URL
+          const upgradedPlan = searchParams.get("plan") as "growth" | "pro" | null;
+          const cycle = searchParams.get("cycle") as "monthly" | "yearly" | null;
+          
+          if (upgradedPlan && (upgradedPlan === "growth" || upgradedPlan === "pro") && cycle) {
+            console.log(`💾 Updating Firestore...`);
+            
+            // Calculate subscription end date
+            const endDate = new Date();
+            if (cycle === "monthly") {
+              endDate.setMonth(endDate.getMonth() + 1);
+            } else {
+              endDate.setFullYear(endDate.getFullYear() + 1);
+            }
+            
+            // Update Firestore with the new plan, cycle, and expiration date
+            await updateDoc(doc(db, "users", user.uid), {
+              plan: upgradedPlan,
+              billing_cycle: cycle,
+              subscription_end_date: endDate,
+              updatedAt: new Date(),
+            });
+            
+            setUserPlan(upgradedPlan);
+            setUserBillingCycle(cycle);
+            setSubscriptionEndDate(endDate);
+            console.log(`✅ Plan updated to: ${upgradedPlan} (${cycle}, expires: ${endDate.toLocaleDateString()})`);
+          }
+          
+          setSuccessMessage("✅ Payment successful! Plan activated!");
+          
+          // Clear success message and URL after 3 seconds
+          setTimeout(() => {
+            setSuccessMessage("");
+            // Remove the success param from URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }, 3000);
+        } catch (error) {
+          console.error("Error updating plan:", error);
+          setSuccessMessage("❌ Plan update failed. Please refresh the page.");
+          setTimeout(() => setSuccessMessage(""), 5000);
+        }
+      }
+    };
+    handleSuccessRedirect();
+  }, [searchParams, user?.uid]);
+
+  useEffect(() => {
+    const storedProfile = localStorage.getItem("userProfile");
+    if (storedProfile) setUserProfile(JSON.parse(storedProfile));
+  }, []);
+
+  const menuItems = [
+    { icon: Wallet, label: "Finance Overview", feature: "finance" },
+    { icon: Boxes, label: "Inventory Dashboard", feature: "inventory_dashboard" },
+    { icon: ShoppingCart, label: "Record Sale", feature: "record_sale" },
+    { icon: BarChart2, label: "Inventory Manager", feature: "inventory_manager" },
+    { icon: PlusSquare, label: "Add Product", feature: "add_product" },
+    { icon: QrCode, label: "QR & Barcodes", feature: "qr_barcodes" },
+    { icon: Sparkles, label: "AI Insights", feature: "ai_insights" },
+    { icon: ReceiptText, label: "Financial Reports", feature: "financial_reports" },
+    { icon: Banknote, label: "Tax Center", feature: "tax_center" },
+    { icon: LinkIcon, label: "Integrations", feature: "integrations" },
+    { icon: Users, label: "Team Management", feature: "team_management" },
+    { icon: CreditCard, label: "Billing & Plan", feature: "billing" },
+    { icon: Zap, label: "Improvement Hub", feature: "improvement_hub" },
+    { icon: Settings, label: "Settings", feature: "settings" },
+  ];
+
+  const plans = [
+    {
+      id: "free",
+      name: "Free",
+      monthlyPrice: 0,
+      yearlyPrice: 0,
+      description: "Try Nayance risk-free",
+      features: [
+        "✓ Basic product & inventory tracking",
+        "✓ Manual sales logging",
+        "✓ Simple dashboard",
+        "✓ Total sales overview",
+        "✓ Stock level visibility",
+        "✓ Basic product information",
+        "✓ Manual product addition",
+        "✓ Daily sales tracking",
+      ],
+      button: "Current Plan",
+      buttonClass: "disabled",
+      priceIdMonthly: "",
+      priceIdYearly: "",
+    },
+    {
+      id: "growth",
+      name: "Starter",
+      monthlyPrice: 15.99,
+      yearlyPrice: 159.99,
+      description: "For growing businesses",
+      features: [
+        "✓ Everything in Free",
+        "✓ Full inventory management",
+        "✓ Automatic tax calculations",
+        "✓ Detailed sales dashboards",
+        "✓ Sales trend analytics",
+        "✓ Top-selling products report",
+        "✓ Low-stock alerts",
+        "✓ Profit/loss summaries",
+        "✓ Simple report generation",
+        "✓ Customer order tracking",
+        "✓ Sales performance insights",
+      ],
+      button: "Upgrade to Starter",
+      buttonClass: "primary",
+      isPopular: true,
+      priceIdMonthly: "price_1T5KFWHVEVbQywP8b5tfaSHy",
+      priceIdYearly: "price_1T5KGDHVEVbQywP8ccO6ku7r",
+    },
+    {
+      id: "pro",
+      name: "Pro",
+      monthlyPrice: 19.99,
+      yearlyPrice: 199.99,
+      description: "Advanced tools & integrations",
+      features: [
+        "✓ Everything in Starter",
+        "✓ Shopify integration",
+        "✓ AI-powered sales insights",
+        "✓ Advanced filtering dashboards",
+        "✓ Filter by product, category, date",
+        "✓ Smart low-stock alerts",
+        "✓ Inventory forecasting",
+        "✓ Detailed reporting with graphs",
+        "✓ Employee salary tracking",
+        "✓ Multi-currency handling",
+        "✓ Data tracking & analysis",
+        "✓ Advanced reports & export",
+      ],
+      button: "Upgrade to Pro",
+      buttonClass: "secondary",
+      priceIdMonthly: "price_1T5KGqHVEVbQywP8TI8qobph",
+      priceIdYearly: "price_1T5KHPHVEVbQywP8GfJBPmiw",
+    },
+  ];
+
+  const makeRoute = (label: string) =>
+    "/" +
+    label.toLowerCase().replace(/ & /g, "-").replace(/ /g, "-").replace(/-/g, "-");
+
+  const handleUpgrade = async (plan: typeof plans[0]) => {
+    if (plan.id === "free") return;
+    if (!user?.uid) {
+      alert("Please log in first");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Use real Stripe integration
+      const priceId = billingCycle === "monthly" ? plan.priceIdMonthly : plan.priceIdYearly;
+      
+      if (!priceId) {
+        throw new Error("Price ID not configured for this plan");
+      }
+
+      // Use local backend server on port 5000 for dev, or production endpoint
+      const isLocalDev = import.meta.env.DEV && window.location.hostname === 'localhost';
+      const serverUrl = isLocalDev ? 'http://localhost:5000' : window.location.origin;
+
+      console.log(`🔄 Creating checkout for ${plan.name} (${billingCycle})...`);
+      console.log(`📤 Sending to ${serverUrl}/create-checkout-session with:`, {
+        uid: user.uid,
+        priceId,
+        billingCycle,
+        plan: plan.id,
+      });
+      
+      const response = await fetch(`${serverUrl}/create-checkout-session`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          uid: user.uid,
+          priceId,
+          billingCycle,
+          plan: plan.id,
+        }),
+      });
+
+      console.log(`📨 Response status: ${response.status}`);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
+        console.error(`❌ Server error response:`, errorData);
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log(`✅ Checkout session created:`, data);
+
+      if (!data.sessionUrl) {
+        throw new Error("No session URL returned");
+      }
+
+      console.log(`✅ Redirecting to Stripe checkout...`);
+      // Redirect to Stripe checkout
+      window.location.href = data.sessionUrl;
+    } catch (error) {
+      console.error("❌ Error creating checkout:", error);
+      alert(`Error: ${error instanceof Error ? error.message : 'Failed to create checkout session'}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="dashboard-wrapper">
+      {/* Sidebar */}
+      <aside className={`sidebar ${sidebarOpen ? "open" : "closed"}`}>
+        <div className="sidebar-header">
+          <div className="logo-icon">N</div>
+          {sidebarOpen && <span className="company-name">Golden Goods Inc.</span>}
+        </div>
+
+        <nav className="sidebar-nav">
+          {menuItems
+            .filter(item => hasPermission(currentRole as any, item.feature))
+            .map((item, idx) => {
+            const IconComponent = item.icon;
+            // Allow integrations to navigate even if tier check fails (in case of loading delay)
+            const isAvailable = item.feature === "integrations" || isMenuFeatureAvailable(userPlan, item.feature);
+            const upgradePlan = getUpgradePlanForFeature(item.feature);
+            
+            const handleLockedClick = (e: React.MouseEvent) => {
+              if (!isAvailable) {
+                e.preventDefault();
+                alert(`This feature is only available in ${upgradePlan === "pro" ? "Pro" : "Growth"} plan. Upgrade to unlock it!`);
+              }
+            };
+            
+            return (
+              <Link
+                key={idx}
+                to={isAvailable ? makeRoute(item.label) : "#"}
+                onClick={handleLockedClick}
+                className={`nav-item ${item.label === "Billing & Plan" ? "active" : ""} ${!isAvailable ? "locked" : ""}`}
+              >
+                <div className="nav-item-content">
+                  <IconComponent size={18} className="nav-icon" />
+                  {sidebarOpen && <span>{item.label}</span>}
+                  {!isAvailable && <Lock size={14} className="lock-icon" />}
+                </div>
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="sidebar-footer">
+          <div className="location-main">
+            {userProfile?.city && userProfile?.province 
+              ? `${userProfile.city}, ${userProfile.province}` 
+              : "Add Location"}
+          </div>
+          <div className="location-sub">
+            {userProfile?.businessName || "Business Name"}
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="dashboard-main">
+        {/* Top Bar */}
+        <TopBar
+          onMenuClick={() => setSidebarOpen(!sidebarOpen)}
+          onRoleChange={(role) => setSelectedRole(role)}
+        />
+
+        <div className="scrollable-content">
+          <div className="billing-container">
+            {/* Success Message */}
+            {successMessage && (
+              <div className="success-banner">
+                {successMessage}
+              </div>
+            )}
+
+            {/* Header */}
+            <div className="billing-header">
+              <h1 className="billing-title">Billing & Plan</h1>
+              <p className="billing-subtitle">Choose the perfect plan for your business</p>
+              {userPlan !== "free" && (
+                <p className="current-plan-badge">
+                  Current Plan: <strong>{userPlan.toUpperCase()}</strong> ({userBillingCycle})
+                  {subscriptionEndDate && (
+                    <span style={{ fontSize: "12px", color: "#888" }}>
+                      {" "} • Expires: {subscriptionEndDate.toLocaleDateString()}
+                    </span>
+                  )}
+                </p>
+              )}
+            </div>
+
+            {/* Controls - Top Right */}
+            <div className="billing-controls-top">
+              <div className="currency-selector">
+                <select className="currency-dropdown" value={currency} onChange={(e) => setCurrency(e.target.value)}>
+                  <option value="USD">USD - US Dollar</option>
+                  <option value="EUR">EUR - Euro</option>
+                  <option value="GBP">GBP - British Pound</option>
+                  <option value="CAD">CAD - Canadian Dollar</option>
+                  <option value="AUD">AUD - Australian Dollar</option>
+                  <option value="INR">INR - Indian Rupee</option>
+                  <option value="NGN">NGN - Nigerian Naira</option>
+                </select>
+              </div>
+
+              <div className="billing-toggle">
+                <button
+                  className={`toggle-btn ${billingCycle === "monthly" ? "active" : ""}`}
+                  onClick={() => setBillingCycle("monthly")}
+                >
+                  Monthly
+                </button>
+                <button
+                  className={`toggle-btn ${billingCycle === "yearly" ? "active" : ""}`}
+                  onClick={() => setBillingCycle("yearly")}
+                >
+                  Yearly {billingCycle === "yearly" && <span className="yearly-badge">Save 17%</span>}
+                </button>
+              </div>
+            </div>
+
+            {/* Plans Grid */}
+            <div className="plans-grid">
+              {plans.map((plan) => {
+                // Check if this plan card is the active one
+                // Only show as active if userBillingCycle matches the current billingCycle
+                const isActive = plan.id !== "free" && userPlan === plan.id && userBillingCycle === billingCycle;
+                
+                return (
+                <div
+                  key={plan.id}
+                  className={`plan-card ${plan.isPopular ? "popular" : ""} ${isActive ? "active" : ""}`}
+                >
+                  {plan.isPopular && <div className="popular-badge">Most Popular</div>}
+                  {isActive && <div className="active-badge">✓ Active</div>}
+
+                  <div className="plan-header">
+                    <h2 className="plan-name">{plan.name}</h2>
+                    <p className="plan-description">{plan.description}</p>
+                  </div>
+
+                  <div className="plan-price">
+                    <span className="currency">{currency === "USD" ? "$" : currency}</span>
+                    <span className="amount">
+                      {(() => {
+                        const priceUSD = billingCycle === "monthly" ? plan.monthlyPrice : plan.yearlyPrice;
+                        const convertedPrice = currency === "USD" ? priceUSD : convertCurrency(priceUSD, "USD", currency);
+                        return convertedPrice.toFixed(2);
+                      })()}
+                    </span>
+                    <span className="period">
+                      {billingCycle === "monthly" ? "/month" : "/year"}
+                    </span>
+                  </div>
+
+                  {billingCycle === "yearly" && plan.id !== "free" && (
+                    <div className="plan-save-badge">Save 17%</div>
+                  )}
+
+                  <button
+                    className={`plan-button ${plan.buttonClass} ${isActive ? "current-plan" : ""}`}
+                    onClick={() => handleUpgrade(plan)}
+                    disabled={plan.id === "free" || isActive || loading}
+                  >
+                    {isActive ? "✓ Current Plan" : loading ? "Processing..." : plan.button}
+                  </button>
+
+                  <div className="features-divider"></div>
+
+                  <div className="plan-features">
+                    <h3 className="features-title">Includes:</h3>
+                    <ul className="features-list">
+                      {plan.features.map((feature, idx) => (
+                        <li key={idx} className="feature-item">
+                          <Check size={16} className="feature-icon" />
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+                );
+              })}
+            </div>
+
+            {/* Why Upgrade Section */}
+            <div className="billing-faq">
+              <h3 className="faq-title">Why upgrade?</h3>
+              <div className="faq-items">
+                <div className="faq-item">
+                  <div className="faq-icon">📊</div>
+                  <div className="faq-content">
+                    <h4>Advanced Analytics</h4>
+                    <p>Get deeper insights into your business with advanced reports and export capabilities.</p>
+                  </div>
+                </div>
+                <div className="faq-item">
+                  <div className="faq-icon">🔒</div>
+                  <div className="faq-content">
+                    <h4>Enhanced Security</h4>
+                    <p>Fraud detection, anomaly alerts, and enterprise-grade security features.</p>
+                  </div>
+                </div>
+                <div className="faq-item">
+                  <div className="faq-icon">⚡</div>
+                  <div className="faq-content">
+                    <h4>Priority Support</h4>
+                    <p>Get help when you need it with priority email and 24/7 support on Pro.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  );
+};
+
+export default BillingPlan;
