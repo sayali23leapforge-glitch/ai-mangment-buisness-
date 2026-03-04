@@ -1,12 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import {
-  Wallet, Boxes, ShoppingCart, BarChart2, PlusSquare,
-  QrCode, Sparkles, ReceiptText, Banknote, Link as LinkIcon,
-  Users, CreditCard, Settings, Copy, Check, Trash2, Search,
-  Users2, CheckCircle, Lock, Zap, Eye, EyeOff
-} from "lucide-react";
+import { Users2, CheckCircle, Users, Lock, Search, Trash2, Eye, EyeOff, Wallet, BarChart2 } from "lucide-react";
 import TopBar from "../components/TopBar";
+import Sidebar from "../components/Sidebar";
 import { useAuth } from "../context/AuthContext";
 import { useRole } from "../context/RoleContext";
 import { hasPermission } from "../utils/rolePermissions";
@@ -56,23 +52,6 @@ const TeamManagement = () => {
     return () => clearInterval(timer);
   }, []);
 
-  const menuItems = [
-    { icon: Wallet, label: "Finance Overview", feature: "finance" },
-    { icon: Boxes, label: "Inventory Dashboard", feature: "inventory_dashboard" },
-    { icon: ShoppingCart, label: "Record Sale", feature: "record_sale" },
-    { icon: BarChart2, label: "Inventory Manager", feature: "inventory_manager" },
-    { icon: PlusSquare, label: "Add Product", feature: "add_product" },
-    { icon: QrCode, label: "QR & Barcodes", feature: "qr_barcodes" },
-    { icon: Sparkles, label: "AI Insights", feature: "ai_insights" },
-    { icon: ReceiptText, label: "Financial Reports", feature: "financial_reports" },
-    { icon: Banknote, label: "Tax Center", feature: "tax_center" },
-    { icon: LinkIcon, label: "Integrations", feature: "integrations" },
-    { icon: Users, label: "Team Management", feature: "team_management" },
-    { icon: CreditCard, label: "Billing & Plan", feature: "billing" },
-    { icon: Zap, label: "Improvement Hub", feature: "improvement_hub" },
-    { icon: Settings, label: "Settings", feature: "settings" },
-  ];
-
   // Subscribe to real-time team invites and team members
   useEffect(() => {
     if (!user?.email) return;
@@ -91,10 +70,6 @@ const TeamManagement = () => {
       unsubscribeMembers();
     };
   }, [user?.email]);
-
-  const makeRoute = (label: string) =>
-    "/" +
-    label.toLowerCase().replace(/ & /g, "-").replace(/ /g, "-").replace(/-/g, "-");
 
   const handleSendInvite = async () => {
     if (!email || !role || !password || !confirmPassword) {
@@ -149,7 +124,8 @@ const TeamManagement = () => {
         role: systemRole as any,
         password: trimmedPassword, // Use sanitized password
         name: email.split("@")[0],
-        createdBy: user?.email || "admin"
+        createdBy: user?.email || "admin",
+        createdAt: new Date().toISOString()
       });
 
       console.log("✅ Team member creation result:", {
@@ -271,41 +247,7 @@ const TeamManagement = () => {
     <div className="dashboard-wrapper">
 
       {/* Sidebar */}
-      <aside className={`sidebar ${sidebarOpen ? "open" : "closed"}`}>
-        <div className="sidebar-header">
-          <div className="logo-icon">N</div>
-          {sidebarOpen && <span className="company-name">Golden Goods Inc.</span>}
-        </div>
-
-        <nav className="sidebar-nav">
-          {menuItems
-            .filter(item => hasPermission(currentRole as any, item.feature))
-            .map((item, idx) => {
-            const IconComponent = item.icon;
-            return (
-              <Link
-                key={idx}
-                to={makeRoute(item.label)}
-                className={`nav-item ${item.label === "Team Management" ? "active" : ""}`}
-              >
-                <IconComponent size={18} className="nav-icon" />
-                {sidebarOpen && <span>{item.label}</span>}
-              </Link>
-            );
-          })}
-        </nav>
-
-        <div className="sidebar-footer">
-          <div className="location-main">
-            {userProfile?.city && userProfile?.province 
-              ? `${userProfile.city}, ${userProfile.province}` 
-              : "Add Location"}
-          </div>
-          <div className="location-sub">
-            {userProfile?.businessName || "Business Name"}
-          </div>
-        </div>
-      </aside>
+      <Sidebar sidebarOpen={sidebarOpen} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
 
       {/* Main Content */}
       <main className="dashboard-main">
@@ -475,6 +417,8 @@ const TeamManagement = () => {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
 
       {/* ------------ ADD EMPLOYEE MODAL ------------ */}
       {showModal && (
@@ -636,8 +580,6 @@ const TeamManagement = () => {
           </div>
         </div>
       )}
-          </div>
-        </div>
       </main>
     </div>
   );

@@ -117,7 +117,7 @@ export default function AcceptInvite() {
           <>
             <div className="invite-header">
               <div className="logo-box">
-                <span className="logo-icon">N</span>
+                <img src="/nayance-logo.jpeg" alt="Nayance" className="logo-icon" />
               </div>
               <h1>Nayance</h1>
             </div>

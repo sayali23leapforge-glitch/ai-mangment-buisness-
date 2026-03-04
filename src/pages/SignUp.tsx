@@ -117,7 +117,7 @@ export default function SignUp() {
           {/* Logo */}
           <div className="logo-container">
             <div className="logo-box">
-              <div className="logo-icon">N</div>
+              <img src="/nayance-logo.jpeg" alt="Nayance" className="logo-icon" />
             </div>
           </div>
 

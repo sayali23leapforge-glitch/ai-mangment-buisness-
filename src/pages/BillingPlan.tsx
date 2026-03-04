@@ -1,11 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import {
-  Wallet, Boxes, ShoppingCart, BarChart2, PlusSquare,
-  QrCode, Sparkles, ReceiptText, Banknote, Link as LinkIcon,
-  Users, CreditCard, Settings, Zap, Check, X, Lock
-} from "lucide-react";
+import { Check, Lock } from "lucide-react";
 import TopBar from "../components/TopBar";
+import Sidebar from "../components/Sidebar";
 import { useAuth } from "../context/AuthContext";
 import { useRole } from "../context/RoleContext";
 import { hasPermission } from "../utils/rolePermissions";
@@ -172,23 +169,6 @@ const BillingPlan = () => {
     if (storedProfile) setUserProfile(JSON.parse(storedProfile));
   }, []);
 
-  const menuItems = [
-    { icon: Wallet, label: "Finance Overview", feature: "finance" },
-    { icon: Boxes, label: "Inventory Dashboard", feature: "inventory_dashboard" },
-    { icon: ShoppingCart, label: "Record Sale", feature: "record_sale" },
-    { icon: BarChart2, label: "Inventory Manager", feature: "inventory_manager" },
-    { icon: PlusSquare, label: "Add Product", feature: "add_product" },
-    { icon: QrCode, label: "QR & Barcodes", feature: "qr_barcodes" },
-    { icon: Sparkles, label: "AI Insights", feature: "ai_insights" },
-    { icon: ReceiptText, label: "Financial Reports", feature: "financial_reports" },
-    { icon: Banknote, label: "Tax Center", feature: "tax_center" },
-    { icon: LinkIcon, label: "Integrations", feature: "integrations" },
-    { icon: Users, label: "Team Management", feature: "team_management" },
-    { icon: CreditCard, label: "Billing & Plan", feature: "billing" },
-    { icon: Zap, label: "Improvement Hub", feature: "improvement_hub" },
-    { icon: Settings, label: "Settings", feature: "settings" },
-  ];
-
   const plans = [
     {
       id: "free",
@@ -263,10 +243,6 @@ const BillingPlan = () => {
     },
   ];
 
-  const makeRoute = (label: string) =>
-    "/" +
-    label.toLowerCase().replace(/ & /g, "-").replace(/ /g, "-").replace(/-/g, "-");
-
   const handleUpgrade = async (plan: typeof plans[0]) => {
     if (plan.id === "free") return;
     if (!user?.uid) {
@@ -338,56 +314,7 @@ const BillingPlan = () => {
   return (
     <div className="dashboard-wrapper">
       {/* Sidebar */}
-      <aside className={`sidebar ${sidebarOpen ? "open" : "closed"}`}>
-        <div className="sidebar-header">
-          <div className="logo-icon">N</div>
-          {sidebarOpen && <span className="company-name">Golden Goods Inc.</span>}
-        </div>
-
-        <nav className="sidebar-nav">
-          {menuItems
-            .filter(item => hasPermission(currentRole as any, item.feature))
-            .map((item, idx) => {
-            const IconComponent = item.icon;
-            // Allow integrations to navigate even if tier check fails (in case of loading delay)
-            const isAvailable = item.feature === "integrations" || isMenuFeatureAvailable(userPlan, item.feature);
-            const upgradePlan = getUpgradePlanForFeature(item.feature);
-            
-            const handleLockedClick = (e: React.MouseEvent) => {
-              if (!isAvailable) {
-                e.preventDefault();
-                alert(`This feature is only available in ${upgradePlan === "pro" ? "Pro" : "Growth"} plan. Upgrade to unlock it!`);
-              }
-            };
-            
-            return (
-              <Link
-                key={idx}
-                to={isAvailable ? makeRoute(item.label) : "#"}
-                onClick={handleLockedClick}
-                className={`nav-item ${item.label === "Billing & Plan" ? "active" : ""} ${!isAvailable ? "locked" : ""}`}
-              >
-                <div className="nav-item-content">
-                  <IconComponent size={18} className="nav-icon" />
-                  {sidebarOpen && <span>{item.label}</span>}
-                  {!isAvailable && <Lock size={14} className="lock-icon" />}
-                </div>
-              </Link>
-            );
-          })}
-        </nav>
-
-        <div className="sidebar-footer">
-          <div className="location-main">
-            {userProfile?.city && userProfile?.province 
-              ? `${userProfile.city}, ${userProfile.province}` 
-              : "Add Location"}
-          </div>
-          <div className="location-sub">
-            {userProfile?.businessName || "Business Name"}
-          </div>
-        </div>
-      </aside>
+      <Sidebar sidebarOpen={sidebarOpen} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
 
       {/* Main Content */}
       <main className="dashboard-main">

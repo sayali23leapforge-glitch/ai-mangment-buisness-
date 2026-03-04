@@ -123,7 +123,7 @@ export default function Login() {
           {/* Logo */}
           <div className="logo-container">
             <div className="logo-box">
-              <span className="logo-icon">N</span>
+              <img src="/nayance-logo.jpeg" alt="Nayance" className="logo-icon" />
             </div>
             <span className="logo-text">NAYANCE</span>
           </div>

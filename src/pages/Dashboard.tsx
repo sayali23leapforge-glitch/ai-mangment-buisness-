@@ -8,10 +8,11 @@ import {
 import {
   Wallet, Boxes, ShoppingCart, BarChart2, PlusSquare,
   QrCode, Sparkles, ReceiptText, Banknote, Link as LinkIcon,
-  Users, CreditCard, Settings, Zap, AlertCircle
+  Users, CreditCard, Settings, Zap, AlertCircle, TrendingUp
 } from "lucide-react";
 
 import TopBar from "../components/TopBar";
+import Sidebar from "../components/Sidebar";
 import { useAuth } from "../context/AuthContext";
 import { useRole } from "../context/RoleContext";
 import { useSubscription } from "../context/SubscriptionContext";
@@ -397,23 +398,6 @@ export default function Dashboard() {
     ];
   }, [financialMetrics.operatingExpenses, financialMetrics.totalRevenue, financialMetrics.grossProfit, products, sales]);
 
-  const menuItems = [
-    { icon: Wallet, label: "Finance Overview", feature: "finance" },
-    { icon: Boxes, label: "Inventory Dashboard", feature: "inventory_dashboard" },
-    { icon: ShoppingCart, label: "Record Sale", feature: "record_sale" },
-    { icon: BarChart2, label: "Inventory Manager", feature: "inventory_manager" },
-    { icon: PlusSquare, label: "Add Product", feature: "add_product" },
-    { icon: QrCode, label: "QR & Barcodes", feature: "qr_barcodes" },
-    { icon: Sparkles, label: "AI Insights", feature: "ai_insights" },
-    { icon: ReceiptText, label: "Financial Reports", feature: "financial_reports" },
-    { icon: Banknote, label: "Tax Center", feature: "tax_center" },
-    { icon: LinkIcon, label: "Integrations", feature: "integrations" },
-    { icon: Users, label: "Team Management", feature: "team_management" },
-    { icon: CreditCard, label: "Billing & Plan", feature: "billing" },
-    { icon: Zap, label: "Improvement Hub", feature: "improvement_hub" },
-    { icon: Settings, label: "Settings", feature: "settings" },
-  ];
-
   const upcoming = useMemo(() => {
     // Get real upcoming tax deadlines from localStorage
     const taxRateStored = localStorage.getItem("tax_corporate");
@@ -482,50 +466,11 @@ export default function Dashboard() {
     ];
   }, [financialMetrics]);
 
-  // Auto-route generator
-  const makeRoute = (label: string) =>
-    "/" +
-    label.toLowerCase().replace(/ & /g, "-").replace(/ /g, "-").replace(/-/g, "-");
-
   return (
     <div className="dashboard-wrapper">
 
       {/* Sidebar */}
-      <aside className={`sidebar ${sidebarOpen ? "open" : "closed"}`}>
-        <div className="sidebar-header">
-          <img src="/nayance-logo-full.svg" alt="Nayance" className="sidebar-logo" />
-          {sidebarOpen && <span className="company-name">Golden Goods Inc.</span>}
-        </div>
-
-        <nav className="sidebar-nav">
-          {menuItems
-            .filter(item => hasPermission(currentRole as any, item.feature))
-            .map((item, idx) => {
-            const IconComponent = item.icon;
-            return (
-              <Link
-                key={idx}
-                to={makeRoute(item.label)}
-                className={`nav-item ${idx === 0 ? "active" : ""}`}
-              >
-                <IconComponent size={18} className="nav-icon" />
-                {sidebarOpen && <span>{item.label}</span>}
-              </Link>
-            );
-          })}
-        </nav>
-
-        <div className="sidebar-footer">
-          <div className="location-main" onClick={handleOpenLocationModal} style={{ cursor: 'pointer' }}>
-            {userProfile?.city && userProfile?.province 
-              ? `${userProfile.city}, ${userProfile.province}` 
-              : "Add Location"}
-          </div>
-          <div className="location-sub">
-            {userProfile?.businessName || "Business Name"}
-          </div>
-        </div>
-      </aside>
+      <Sidebar sidebarOpen={sidebarOpen} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
 
       {/* Main Content */}
       <main className="dashboard-main">

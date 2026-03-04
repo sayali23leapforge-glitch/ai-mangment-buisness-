@@ -51,7 +51,7 @@ export function addNotification(alert: Omit<NotificationAlert, "id" | "timestamp
   if ("Notification" in window && Notification.permission === "granted") {
     new Notification(alert.title, {
       body: alert.message,
-      icon: "/nayance-logo-full.svg",
+      icon: "/nayance-logo.jpeg",
     });
   }
 

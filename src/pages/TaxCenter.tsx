@@ -1,11 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import {
-  QrCode, Wallet, Boxes, ShoppingCart, BarChart2, PlusSquare,
-  ReceiptText, Banknote, LinkIcon, Users, CreditCard, Settings,
-  Calendar, Download, FileText, DollarSign, Zap, Sparkles
-} from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
+import { Sparkles, Calendar, Download, FileText, DollarSign } from "lucide-react";
 import TopBar from "../components/TopBar";
+import Sidebar from "../components/Sidebar";
 import { useRole } from "../context/RoleContext";
 import { hasPermission } from "../utils/rolePermissions";
 import { getProducts } from "../utils/localProductStore";
@@ -44,6 +41,7 @@ export default function TaxCenter() {
   const { user } = useAuth() as any;
   const roleContext = useRole();
   const currentRole = roleContext?.currentRole || "user";
+  const location = useLocation();
   const [userProfile, setUserProfile] = useState<any>(null);
 
   // Load user profile for location
@@ -53,27 +51,6 @@ export default function TaxCenter() {
       setUserProfile(JSON.parse(storedProfile));
     }
   }, []);
-
-  const menuItems = [
-    { icon: Wallet, label: "Finance Overview", feature: "finance" },
-    { icon: Boxes, label: "Inventory Dashboard", feature: "inventory_dashboard" },
-    { icon: ShoppingCart, label: "Record Sale", feature: "record_sale" },
-    { icon: BarChart2, label: "Inventory Manager", feature: "inventory_manager" },
-    { icon: PlusSquare, label: "Add Product", feature: "add_product" },
-    { icon: QrCode, label: "QR & Barcodes", feature: "qr_barcodes" },
-    { icon: Sparkles, label: "AI Insights", feature: "ai_insights" },
-    { icon: ReceiptText, label: "Financial Reports", feature: "financial_reports" },
-    { icon: Banknote, label: "Tax Center", feature: "tax_center" },
-    { icon: LinkIcon, label: "Integrations", feature: "integrations" },
-    { icon: Users, label: "Team Management", feature: "team_management" },
-    { icon: CreditCard, label: "Billing & Plan", feature: "billing" },
-    { icon: Zap, label: "Improvement Hub", feature: "improvement_hub" },
-    { icon: Settings, label: "Settings", feature: "settings" },
-  ];
-
-  const makeRoute = (label: string) =>
-    "/" +
-    label.toLowerCase().replace(/ & /g, "-").replace(/ /g, "-").replace(/-/g, "-");
 
   // tax rates (persisted)
   const [corporateRate, setCorporateRate] = useState<number>(() => {
@@ -251,43 +228,8 @@ export default function TaxCenter() {
 
   return (
     <div className="dashboard-wrapper">
-      {/* SIDEBAR */}
-      <aside className={`sidebar ${sidebarOpen ? "open" : "closed"}`}>
-        <div className="sidebar-header">
-          <h1 className="logo-text">AIPM</h1>
-        </div>
-
-        <nav className="nav-menu">
-          {menuItems
-            .filter(item => hasPermission(currentRole as any, item.feature))
-            .map((item, idx) => {
-            const IconComponent = item.icon;
-            const isActive = idx === 8;
-
-            return (
-              <Link
-                key={idx}
-                to={makeRoute(item.label)}
-                className={`nav-item ${isActive ? "active" : ""}`}
-              >
-                <IconComponent size={18} className="nav-icon" />
-                {sidebarOpen && <span>{item.label}</span>}
-              </Link>
-            );
-          })}
-        </nav>
-
-        <div className="sidebar-footer">
-          <div className="location-main">
-            {userProfile?.city && userProfile?.province 
-              ? `${userProfile.city}, ${userProfile.province}` 
-              : "Add Location"}
-          </div>
-          <div className="location-sub">
-            {userProfile?.businessName || "Business Name"}
-          </div>
-        </div>
-      </aside>
+      {/* Sidebar */}
+      <Sidebar sidebarOpen={sidebarOpen} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
 
       {/* Main Content */}
       <main className="dashboard-main">

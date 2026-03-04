@@ -1,12 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  Wallet, Boxes, ShoppingCart, BarChart2, PlusSquare,
-  QrCode, Sparkles, ReceiptText, Banknote, Link as LinkIcon,
-  Users, CreditCard, Settings as SettingsIcon, Zap, Menu, X,
-  Download, Lock, KeyRound, User, Building2, Bell, Database, Shield, Trash2
-} from "lucide-react";
+import { User, Trash2, Building2, Zap, Bell, Database, Download, Shield, KeyRound, Lock } from "lucide-react";
 import TopBar from "../components/TopBar";
+import Sidebar from "../components/Sidebar";
 import { useRole } from "../context/RoleContext";
 import { hasPermission } from "../utils/rolePermissions";
 import { useAuth } from "../context/AuthContext";
@@ -50,23 +46,6 @@ const Settings: React.FC = () => {
   const { user } = useAuth();
   const roleContext = useRole();
   const currentRole = roleContext?.currentRole || "user";
-
-  const menuItems = [
-    { icon: Wallet, label: "Finance Overview", href: "/dashboard", feature: "finance" },
-    { icon: Boxes, label: "Inventory Dashboard", href: "/inventory", feature: "inventory_dashboard" },
-    { icon: ShoppingCart, label: "Record Sale", href: "/record-sale", feature: "record_sale" },
-    { icon: BarChart2, label: "Financial Reports", href: "/reports", feature: "financial_reports" },
-    { icon: PlusSquare, label: "Add Product", href: "/add-product", feature: "add_product" },
-    { icon: QrCode, label: "QR Manager", href: "/qr-manager", feature: "qr_barcodes" },
-    { icon: Sparkles, label: "AI Insights", href: "/ai-insights", feature: "ai_insights" },
-    { icon: ReceiptText, label: "Tax Center", href: "/tax", feature: "tax_center" },
-    { icon: Banknote, label: "Billing Plan", href: "/billing", feature: "billing" },
-    { icon: LinkIcon, label: "Integrations", href: "/integrations", feature: "integrations" },
-    { icon: Users, label: "Team Management", href: "/team", feature: "team_management" },
-    { icon: CreditCard, label: "Connect Business", href: "/connect", feature: "billing" },
-    { icon: Zap, label: "Improvement Hub", href: "/improvement-hub", feature: "improvement_hub" },
-    { icon: SettingsIcon, label: "Settings", href: "/settings", feature: "settings" },
-  ];
 
   // Auto-fetch and load user data when logged in
   useEffect(() => {
@@ -322,39 +301,7 @@ const Settings: React.FC = () => {
   return (
     <div className="dashboard-wrapper">
       {/* Sidebar */}
-      <aside className={`sidebar ${sidebarOpen ? "open" : "closed"}`}>
-        <div className="sidebar-header">
-          <div className="logo-icon">N</div>
-          {sidebarOpen && <span className="company-name">Settings</span>}
-        </div>
-
-        <nav className="sidebar-nav">
-          {menuItems
-            .filter(item => hasPermission(currentRole as any, item.feature))
-            .map((item, index) => {
-            const Icon = item.icon;
-            return (
-              <Link
-                key={index}
-                to={item.href}
-                className={`nav-item ${item.label === "Settings" ? "active" : ""}`}
-              >
-                <Icon size={18} className="nav-icon" />
-                {sidebarOpen && <span>{item.label}</span>}
-              </Link>
-            );
-          })}
-        </nav>
-
-        <div className="sidebar-footer">
-          <div className="location-main">
-            {profile.city && profile.province ? `${profile.city}, ${profile.province}` : "Add Location"}
-          </div>
-          <div className="location-sub">
-            {profile.businessName || "Business Name"}
-          </div>
-        </div>
-      </aside>
+      <Sidebar sidebarOpen={sidebarOpen} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
 
       {/* Main Content */}
       <main className="dashboard-main">

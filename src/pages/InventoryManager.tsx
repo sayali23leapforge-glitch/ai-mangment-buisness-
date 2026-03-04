@@ -1,11 +1,8 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
-import {
-  Search, MoreVertical, X, RefreshCw,
-  QrCode, Wallet, Boxes, ShoppingCart, BarChart2, PlusSquare,
-  ReceiptText, Banknote, LinkIcon, Users, CreditCard, Settings, Package, Edit, Trash2, Zap, Sparkles
-} from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
+import { RefreshCw, Search, Package, QrCode, Trash2, MoreVertical, Edit, X } from "lucide-react";
 import TopBar from "../components/TopBar";
+import Sidebar from "../components/Sidebar";
 import { getProducts, Product, deleteProduct } from "../utils/localProductStore";
 import { useRole } from "../context/RoleContext";
 import { hasPermission } from "../utils/rolePermissions";
@@ -19,6 +16,7 @@ import "../styles/InventoryManager.css";
 export default function InventoryManager() {
   const roleContext = useRole();
   const currentRole = roleContext?.currentRole || "user";
+  const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -151,26 +149,6 @@ export default function InventoryManager() {
     setProducts(allProducts);
   };
 
-  const menuItems = [
-    { icon: Wallet, label: "Finance Overview", feature: "finance" },
-    { icon: Boxes, label: "Inventory Dashboard", feature: "inventory_dashboard" },
-    { icon: ShoppingCart, label: "Record Sale", feature: "record_sale" },
-    { icon: BarChart2, label: "Inventory Manager", feature: "inventory_manager" },
-    { icon: PlusSquare, label: "Add Product", feature: "add_product" },
-    { icon: QrCode, label: "QR & Barcodes", feature: "qr_barcodes" },
-    { icon: Sparkles, label: "AI Insights", feature: "ai_insights" },
-    { icon: ReceiptText, label: "Financial Reports", feature: "financial_reports" },
-    { icon: Banknote, label: "Tax Center", feature: "tax_center" },
-    { icon: LinkIcon, label: "Integrations", feature: "integrations" },
-    { icon: Users, label: "Team Management", feature: "team_management" },
-    { icon: CreditCard, label: "Billing & Plan", feature: "billing" },
-    { icon: Zap, label: "Improvement Hub", feature: "improvement_hub" },
-    { icon: Settings, label: "Settings", feature: "settings" },
-  ];
-
-  const makeRoute = (label: string) =>
-    "/" + label.toLowerCase().replace(/ & /g, "-").replace(/ /g, "-").replace(/-/g, "-");
-
   // Display product's QR code or generate new one
   const generateQR = (product: Product) => {
     // If product has a saved QR code, display it
@@ -271,41 +249,7 @@ export default function InventoryManager() {
   return (
     <div className="dashboard-wrapper">
       {/* Sidebar */}
-      <aside className={`sidebar ${sidebarOpen ? "open" : "closed"}`}>
-        <div className="sidebar-header">
-          <div className="logo-icon">N</div>
-          {sidebarOpen && <span className="company-name">Golden Goods Inc.</span>}
-        </div>
-
-        <nav className="sidebar-nav">
-          {menuItems
-            .filter(item => hasPermission(currentRole as any, item.feature))
-            .map((item, idx) => {
-            const IconComponent = item.icon;
-            return (
-              <Link
-                key={idx}
-                to={makeRoute(item.label)}
-                className={`nav-item ${idx === 3 ? "active" : ""}`}
-              >
-                <IconComponent size={18} className="nav-icon" />
-                {sidebarOpen && <span>{item.label}</span>}
-              </Link>
-            );
-          })}
-        </nav>
-
-        <div className="sidebar-footer">
-          <div className="location-main">
-            {userProfile?.city && userProfile?.province 
-              ? `${userProfile.city}, ${userProfile.province}` 
-              : "Add Location"}
-          </div>
-          <div className="location-sub">
-            {userProfile?.businessName || "Business Name"}
-          </div>
-        </div>
-      </aside>
+      <Sidebar sidebarOpen={sidebarOpen} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
 
       {/* Main Content */}
       <main className="dashboard-main">

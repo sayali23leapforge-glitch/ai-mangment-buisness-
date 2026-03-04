@@ -133,12 +133,6 @@ function App() {
             }
           />
 
-          {/* DEFAULT ROUTE → SEND TO LOGIN */}
-          <Route path="/" element={<Navigate to="/login" replace />} />
-
-          {/* WILDCARD ROUTE → ANY UNKNOWN URL */}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-
           <Route
             path="/financial-reports"
             element={
@@ -147,7 +141,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-           <Route
+          <Route
             path="/tax-center"
             element={
               <ProtectedRoute>
@@ -190,6 +184,12 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          {/* DEFAULT ROUTE → SEND TO LOGIN */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
+
+          {/* WILDCARD ROUTE → ANY UNKNOWN URL (MUST BE LAST) */}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
 
         </Routes>
           </SubscriptionProvider>
