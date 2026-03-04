@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import {
-  QrCode, Wallet, Boxes, ShoppingCart, BarChart2, PlusSquare,
-  ReceiptText, Banknote, LinkIcon, Users, CreditCard, Settings, TrendingUp, Zap, Sparkles
-} from "lucide-react";
+import { QrCode, ShoppingCart, TrendingUp } from "lucide-react";
 import TopBar from "../components/TopBar";
+import Sidebar from "../components/Sidebar";
 import { getProducts, reduceStock, Product } from "../utils/localProductStore";
 import { useRole } from "../context/RoleContext";
 import { hasPermission } from "../utils/rolePermissions";
 import "../styles/RecordSale.css";
+
+type ExpenseLine = { label: string; amount: number };
 
 export default function RecordSale() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -22,6 +22,21 @@ export default function RecordSale() {
   const [cartItems, setCartItems] = useState<Array<{id: string, name: string, price: number, quantity: number}>>([]);
   const [completedSales, setCompletedSales] = useState<Array<{id: string, date: string, product: string, quantity: number, total: number}>>([]);
 
+  // Expense tracking
+  const [expenses, setExpenses] = useState<ExpenseLine[]>(() => {
+    const stored = localStorage.getItem("expenses");
+    return stored ? JSON.parse(stored) : [];
+  });
+  const [showExpenseForm, setShowExpenseForm] = useState(false);
+  const [expenseDesc, setExpenseDesc] = useState("");
+  const [expenseAmount, setExpenseAmount] = useState("");
+
+  // Tax rate
+  const [taxRate] = useState<number>(() => {
+    const t = localStorage.getItem("taxRate");
+    return t ? Number(t) : 15;
+  });
+
   // Load products on mount
   useEffect(() => {
     const loadedProducts = getProducts();
@@ -31,32 +46,51 @@ export default function RecordSale() {
     if (storedProfile) setUserProfile(JSON.parse(storedProfile));
   }, []);
 
-  const menuItems = [
-    { icon: Wallet, label: "Finance Overview", feature: "finance" },
-    { icon: Boxes, label: "Inventory Dashboard", feature: "inventory_dashboard" },
-    { icon: ShoppingCart, label: "Record Sale", feature: "record_sale" },
-    { icon: BarChart2, label: "Inventory Manager", feature: "inventory_manager" },
-    { icon: PlusSquare, label: "Add Product", feature: "add_product" },
-    { icon: QrCode, label: "QR & Barcodes", feature: "qr_barcodes" },
-    { icon: Sparkles, label: "AI Insights", feature: "ai_insights" },
-    { icon: ReceiptText, label: "Financial Reports", feature: "financial_reports" },
-    { icon: Banknote, label: "Tax Center", feature: "tax_center" },
-    { icon: LinkIcon, label: "Integrations", feature: "integrations" },
-    { icon: Users, label: "Team Management", feature: "team_management" },
-    { icon: CreditCard, label: "Billing & Plan", feature: "billing" },
-    { icon: Zap, label: "Improvement Hub", feature: "improvement_hub" },
-    { icon: Settings, label: "Settings", feature: "settings" },
-  ];
-
-  // Auto-route generator
-  const makeRoute = (label: string) =>
-    "/" +
-    label.toLowerCase().replace(/ & /g, "-").replace(/ /g, "-").replace(/-/g, "-");
-
   // Get selected product object
   const getSelectedProduct = (): Product | undefined => {
     return products.find(p => p.id === selectedProductId);
   };
+
+  // Expense management
+  const addExpense = () => {
+    // Validate inputs
+    if (!expenseDesc.trim()) {
+      alert("Please enter an expense description");
+      return;
+    }
+
+    const amount = parseFloat(expenseAmount);
+    if (isNaN(amount) || amount <= 0) {
+      alert("Please enter a valid expense amount (greater than 0)");
+      return;
+    }
+
+    const newExpense: ExpenseLine = {
+      label: expenseDesc.trim(),
+      amount: amount
+    };
+
+    const updated = [...expenses, newExpense];
+    setExpenses(updated);
+    localStorage.setItem("expenses", JSON.stringify(updated));
+    
+    // 🔔 Dispatch custom event to notify other components
+    window.dispatchEvent(new CustomEvent("expensesUpdated", { detail: newExpense }));
+    
+    setExpenseDesc("");
+    setExpenseAmount("");
+  };
+
+  const deleteExpense = (index: number) => {
+    const updated = expenses.filter((_, i) => i !== index);
+    setExpenses(updated);
+    localStorage.setItem("expenses", JSON.stringify(updated));
+    
+    // 🔔 Dispatch custom event to notify other components
+    window.dispatchEvent(new CustomEvent("expensesUpdated", { detail: { deleted: true } }));
+  };
+
+
 
   // Add product to cart
   const addToCart = () => {
@@ -124,7 +158,12 @@ export default function RecordSale() {
 
   // Complete sale - save to completed sales and reduce stock
   const completeSale = () => {
-    if (cartItems.length === 0) return;
+    console.log("🛒 Complete Sale clicked - Cart items:", cartItems.length);
+    
+    if (cartItems.length === 0) {
+      alert("Add products to cart before completing sale");
+      return;
+    }
     
     const now = new Date();
     const dateStr = now.toLocaleString(); // e.g., "11/27/2025, 11:54 PM"
@@ -164,52 +203,25 @@ export default function RecordSale() {
     salesArray.push(saleObject);
     localStorage.setItem("sales", JSON.stringify(salesArray));
     
+    // 🔔 Dispatch custom event to notify other components (same tab)
+    window.dispatchEvent(new CustomEvent("salesUpdated", { detail: saleObject }));
+    console.log("💾 Saved sale to localStorage:", saleObject);
+    
     // Reload products to reflect new stock
     const updatedProducts = getProducts();
     setProducts(updatedProducts);
     
     setCompletedSales([...newSales, ...completedSales]);
     setCartItems([]);
+    setShowExpenseForm(false); // Close expense form after sale
+    
+    alert("✅ Sale completed successfully! Check Financial Reports for detailed calculations.");
   };
 
   return (
     <div className="dashboard-wrapper">
       {/* Sidebar */}
-      <aside className={`sidebar ${sidebarOpen ? "open" : "closed"}`}>
-        <div className="sidebar-header">
-          <div className="logo-icon">N</div>
-          {sidebarOpen && <span className="company-name">Golden Goods Inc.</span>}
-        </div>
-
-        <nav className="sidebar-nav">
-          {menuItems
-            .filter(item => hasPermission(currentRole as any, item.feature))
-            .map((item, idx) => {
-            const IconComponent = item.icon;
-            return (
-              <Link
-                key={idx}
-                to={makeRoute(item.label)}
-                className={`nav-item ${idx === 2 ? "active" : ""}`}
-              >
-                <IconComponent size={18} className="nav-icon" />
-                {sidebarOpen && <span>{item.label}</span>}
-              </Link>
-            );
-          })}
-        </nav>
-
-        <div className="sidebar-footer">
-          <div className="location-main">
-            {userProfile?.city && userProfile?.province 
-              ? `${userProfile.city}, ${userProfile.province}` 
-              : "Add Location"}
-          </div>
-          <div className="location-sub">
-            {userProfile?.businessName || "Business Name"}
-          </div>
-        </div>
-      </aside>
+      <Sidebar sidebarOpen={sidebarOpen} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
 
       {/* Main Content */}
       <main className="dashboard-main">
@@ -249,41 +261,39 @@ export default function RecordSale() {
 
               {/* ADD PRODUCT BOX */}
               <div className="add-box">
-            <div className="add-header">Add Products to Sale</div>
+                <div className="add-header">Add Products to Sale</div>
 
-            <div className="add-controls">
-              <div className="add-left">
-                <label>Select Product</label>
-                <select
-                  className="product-select"
-                  value={selectedProductId}
-                  onChange={(e) => setSelectedProductId(e.target.value)}
-                >
-                  <option value="">Choose a product</option>
-                  {products.map((product) => (
-                    <option key={product.id} value={product.id}>
-                      {product.name} - ${product.price.toFixed(2)} ({product.stock} in stock)
-                    </option>
-                  ))}
-                </select>
-              </div>
+                <div className="add-controls">
+                  <div className="add-left">
+                    <label>Select Product</label>
+                    <select
+                      className="product-select"
+                      value={selectedProductId}
+                      onChange={(e) => setSelectedProductId(e.target.value)}
+                    >
+                      <option value="">Choose a product</option>
+                      {products.map((product) => (
+                        <option key={product.id} value={product.id}>
+                          {product.name} - ${product.price.toFixed(2)} ({product.stock} in stock)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-              <div className="add-right">
-                <label>Quantity</label>
-                <div className="qty-box">
-                  <input
-                    type="number"
-                    min="1"
-                    value={qty}
-                    onChange={(e) => setQty(Number(e.target.value))}
-                  />
-                  <button className="qty-plus" onClick={addToCart}>+</button>
+                  <div className="add-right">
+                    <label>Quantity</label>
+                    <div className="qty-box">
+                      <input
+                        type="number"
+                        min="1"
+                        value={qty}
+                        onChange={(e) => setQty(Number(e.target.value))}
+                      />
+                      <button className="qty-plus" onClick={addToCart}>+</button>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-
-           
-            </div>
 
               {/* CURRENT SALE BOX */}
               <div className="current-sale-box">
@@ -361,6 +371,72 @@ export default function RecordSale() {
                   <span className="summary-label">Total</span>
                   <span className="summary-value">${total.toFixed(2)}</span>
                 </div>
+              </div>
+
+              {/* EXPENSES BOX */}
+              <div className="expenses-box">
+                <div className="expenses-header">
+                  <span>Operating Expenses</span>
+                  <button 
+                    className="toggle-expense-btn"
+                    onClick={() => setShowExpenseForm(!showExpenseForm)}
+                  >
+                    {showExpenseForm ? '−' : '+'}
+                  </button>
+                </div>
+
+                {showExpenseForm && (
+                  <div className="expense-form">
+                    <input
+                      type="text"
+                      placeholder="Expense description (e.g., Rent)"
+                      value={expenseDesc}
+                      onChange={(e) => setExpenseDesc(e.target.value)}
+                      className="expense-input"
+                    />
+                    <input
+                      type="number"
+                      placeholder="Amount"
+                      value={expenseAmount}
+                      onChange={(e) => setExpenseAmount(e.target.value)}
+                      className="expense-input"
+                    />
+                    <button 
+                      className="add-expense-btn"
+                      onClick={addExpense}
+                    >
+                      Add Expense
+                    </button>
+                  </div>
+                )}
+
+                <div className="expenses-list">
+                  {expenses.length === 0 ? (
+                    <div className="no-expenses">No expenses added</div>
+                  ) : (
+                    expenses.map((exp, idx) => (
+                      <div key={idx} className="expense-item">
+                        <div className="expense-info">
+                          <span className="expense-label">{exp.label}</span>
+                          <span className="expense-amount">${exp.amount.toFixed(2)}</span>
+                        </div>
+                        <button 
+                          className="delete-expense-btn"
+                          onClick={() => deleteExpense(idx)}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {expenses.length > 0 && (
+                  <div className="expense-total">
+                    <span>Total Expenses</span>
+                    <span>${expenses.reduce((sum, exp) => sum + exp.amount, 0).toFixed(2)}</span>
+                  </div>
+                )}
               </div>
 
               {/* FINANCIAL IMPACT BOX */}
@@ -443,6 +519,9 @@ export default function RecordSale() {
 
           </div>
         </div>
+
+        {/* SUMMARY MODAL */}
+
 
       </main>
     </div>

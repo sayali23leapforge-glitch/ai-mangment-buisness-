@@ -1,11 +1,9 @@
 import { useMemo, useState, useEffect } from "react";
-import { Link } from "react-router-dom";
-import {
-  QrCode, Wallet, Boxes, ShoppingCart, BarChart2, PlusSquare,
-  ReceiptText, Banknote, LinkIcon, Users, CreditCard, Settings, Zap, Sparkles, AlertCircle
-} from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend, PieChart, Pie } from "recharts";
+import { AlertCircle } from "lucide-react";
 import TopBar from "../components/TopBar";
+import Sidebar from "../components/Sidebar";
 import { useRole } from "../context/RoleContext";
 import { hasPermission } from "../utils/rolePermissions";
 import { getProducts, Product } from "../utils/localProductStore";
@@ -32,26 +30,40 @@ function fmt(n: number) {
   return n.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 }
 
-// Read sales from localStorage - ONLY show Shopify data when connected
+// Read sales from localStorage - support both manual sales AND Shopify data
 function readSales(): any[] {
-  // Only return data if Shopify is connected
-  if (!isShopifyConnected()) {
-    return [];
-  }
-
   try {
-    const shopifySales = getShopifySalesFromStorage();
-    if (shopifySales && shopifySales.length > 0) {
-      // Transform Shopify sales to match expected format
-      return shopifySales.map((sale: any) => ({
+    // If Shopify is connected, try to use Shopify data first
+    if (isShopifyConnected()) {
+      const shopifySales = getShopifySalesFromStorage();
+      if (shopifySales && shopifySales.length > 0) {
+        console.log("✅ Using Shopify sales:", shopifySales.length);
+        return shopifySales.map((sale: any) => ({
+          ...sale,
+          items: sale.lineItems || [{ productId: sale.productId, quantity: sale.quantity, price: sale.amount }]
+        }));
+      }
+    }
+    
+    // Read manual sales from localStorage (Record Sale) regardless of Shopify connection
+    const manualSales = localStorage.getItem("sales");
+    if (manualSales) {
+      const salesArray = JSON.parse(manualSales);
+      console.log("✅ Using manual sales from localStorage:", salesArray.length);
+      // Transform to match expected format with timestamp and amount
+      return salesArray.map((sale: any) => ({
         ...sale,
-        items: sale.lineItems || [{ productId: sale.productId, quantity: sale.quantity, price: sale.amount }]
+        timestamp: sale.date,
+        amount: sale.total || sale.subtotal || 0,
+        items: sale.items || [],
+        quantity: sale.items ? sale.items.reduce((sum: number, item: any) => sum + Number(item.quantity || 0), 0) : 0
       }));
     }
   } catch (err) {
-    console.error("Error reading Shopify sales:", err);
+    console.error("Error reading sales:", err);
   }
 
+  console.log("⚠️ No sales found");
   return [];
 }
 
@@ -72,25 +84,21 @@ function readOperatingExpenses(): ExpenseLine[] {
 
   // Return REAL expenses - start at zero until user adds them
   // These are the categories available, but amounts are zero by default
-  return [
-    { label: "Salaries", amount: 0 },
-    { label: "Rent", amount: 0 },
-    { label: "Marketing", amount: 0 },
-    { label: "Utilities", amount: 0 },
-    { label: "Other", amount: 0 },
-  ];
+  return [];
 }
 
 export default function FinancialReports() {
   const roleContext = useRole();
   const currentRole = roleContext?.currentRole || "user";
+  const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [tab, setTab] = useState<"income" | "balance" | "cash">("income");
   const [showReportMenu, setShowReportMenu] = useState(false);
+  const [expenses, setExpenses] = useState<ExpenseLine[]>(() => readOperatingExpenses());
   const [userProfile, setUserProfile] = useState<any>(null);
   const [taxRate] = useState<number>(() => {
     const t = localStorage.getItem("taxRate");
-    return t ? Number(t) : 12;
+    return t ? Number(t) : 15;
   });
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string>(() => {
@@ -104,47 +112,45 @@ export default function FinancialReports() {
     if (storedProfile) setUserProfile(JSON.parse(storedProfile));
   }, []);
 
-  // Listen for Shopify connection/disconnection
+  // Listen for Shopify connection/disconnection AND manual sales changes
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "shopifyConnected" || e.key === "shopifyProducts" || e.key === "shopifySales") {
-        console.log("🔄 Shopify data changed in FinancialReports, refreshing");
+      if (e.key === "shopifyConnected" || e.key === "shopifyProducts" || e.key === "shopifySales" || 
+          e.key === "sales" || e.key === "expenses") {
+        console.log("🔄 Data changed:", e.key, "- Refreshing calculations");
         setDataRefresh(prev => prev + 1); // Trigger re-render
       }
     };
 
+    // Listen for custom event from Record Sale page (same tab)
+    const handleSalesUpdated = (e: any) => {
+      console.log("🔔 Custom event: salesUpdated - Refreshing calculations");
+      setDataRefresh(prev => prev + 1);
+    };
+
+    const handleExpensesUpdated = (e: any) => {
+      console.log("🔔 Custom event: expensesUpdated - Refreshing calculations");
+      setDataRefresh(prev => prev + 1);
+    };
+
     window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
+    window.addEventListener("salesUpdated", handleSalesUpdated);
+    window.addEventListener("expensesUpdated", handleExpensesUpdated);
+    
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("salesUpdated", handleSalesUpdated);
+      window.removeEventListener("expensesUpdated", handleExpensesUpdated);
+    };
   }, []);
   
   // State for monthly data
   const [monthlyData, setMonthlyData] = useState<any[]>([]);
 
-  const menuItems = [
-    { icon: Wallet, label: "Finance Overview", feature: "finance" },
-    { icon: Boxes, label: "Inventory Dashboard", feature: "inventory_dashboard" },
-    { icon: ShoppingCart, label: "Record Sale", feature: "record_sale" },
-    { icon: BarChart2, label: "Inventory Manager", feature: "inventory_manager" },
-    { icon: PlusSquare, label: "Add Product", feature: "add_product" },
-    { icon: QrCode, label: "QR & Barcodes", feature: "qr_barcodes" },
-    { icon: Sparkles, label: "AI Insights", feature: "ai_insights" },
-    { icon: ReceiptText, label: "Financial Reports", feature: "financial_reports" },
-    { icon: Banknote, label: "Tax Center", feature: "tax_center" },
-    { icon: LinkIcon, label: "Integrations", feature: "integrations" },
-    { icon: Users, label: "Team Management", feature: "team_management" },
-    { icon: CreditCard, label: "Billing & Plan", feature: "billing" },
-    { icon: Zap, label: "Improvement Hub", feature: "improvement_hub" },
-    { icon: Settings, label: "Settings", feature: "settings" },
-  ];
-
-  const makeRoute = (label: string) =>
-    "/" +
-    label.toLowerCase().replace(/ & /g, "-").replace(/ /g, "-").replace(/-/g, "-");
-
   // data sources - use Shopify if connected, otherwise local
   const products: Product[] = isShopifyConnected() ? getShopifyProductsFromStorage() : getProducts();
   const sales: Sale[] = readSales();
-  const operatingExpenses = readOperatingExpenses();
+  const operatingExpenses = expenses;
 
   // Generate monthly data for charts
   useEffect(() => {
@@ -417,43 +423,8 @@ export default function FinancialReports() {
 
   return (
     <div className="dashboard-wrapper">
-      {/* SIDEBAR */}
-      <aside className={`sidebar ${sidebarOpen ? "open" : "closed"}`}>
-        <div className="sidebar-header">
-          <h1 className="logo-text">AIPM</h1>
-        </div>
-
-        <nav className="nav-menu">
-          {menuItems
-            .filter(item => hasPermission(currentRole as any, item.feature))
-            .map((item, idx) => {
-            const IconComponent = item.icon;
-            const isActive = idx === 7;
-
-            return (
-              <Link
-                key={idx}
-                to={makeRoute(item.label)}
-                className={`nav-item ${isActive ? "active" : ""}`}
-              >
-                <IconComponent size={18} className="nav-icon" />
-                {sidebarOpen && <span>{item.label}</span>}
-              </Link>
-            );
-          })}
-        </nav>
-
-        <div className="sidebar-footer">
-          <div className="location-main">
-            {userProfile?.city && userProfile?.province 
-              ? `${userProfile.city}, ${userProfile.province}` 
-              : "Add Location"}
-          </div>
-          <div className="location-sub">
-            {userProfile?.businessName || "Business Name"}
-          </div>
-        </div>
-      </aside>
+      {/* Sidebar */}
+      <Sidebar sidebarOpen={sidebarOpen} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
 
       {/* Main Content */}
       <main className="dashboard-main">
