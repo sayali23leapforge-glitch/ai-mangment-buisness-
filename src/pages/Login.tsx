@@ -12,8 +12,25 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Check if user is already logged in - auto redirect
+  useEffect(() => {
+    const loginType = localStorage.getItem("loginType");
+    const userRole = localStorage.getItem("userRole");
+    
+    if (loginType && userRole) {
+      console.log("✅ User already logged in, redirecting to dashboard...");
+      const connected = getIntegrations();
+      if (connected.length === 0) {
+        navigate('/connect-business', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
+    }
+  }, [navigate]);
 
   // Clear error and reset state EVERY TIME user arrives at login page (including after logout)
   useEffect(() => {
@@ -22,7 +39,14 @@ export default function Login() {
       console.log("🔄 Login page accessed - clearing auth state and form");
       
       setError('');
-      setEmail('');
+      // Don't clear email/password if remember me was checked
+      const rememberedEmail = localStorage.getItem("rememberedEmail");
+      if (rememberedEmail) {
+        setEmail(rememberedEmail);
+        setRememberMe(true);
+      } else {
+        setEmail('');
+      }
       setPassword('');
       setLoading(false);
       setShowPassword(false);
@@ -82,6 +106,16 @@ export default function Login() {
 
       // Store role in localStorage
       localStorage.setItem("userRole", userRole);
+      
+      // Store Remember Me preference
+      if (rememberMe) {
+        localStorage.setItem("rememberedEmail", email);
+        localStorage.setItem("rememberMe", "true");
+        console.log("💾 Remember Me enabled - email stored");
+      } else {
+        localStorage.removeItem("rememberedEmail");
+        localStorage.removeItem("rememberMe");
+      }
       
       // Store indicator of login type
       if (isEmployee) {
@@ -205,6 +239,20 @@ export default function Login() {
                   )}
                 </button>
               </div>
+            </div>
+
+            {/* Remember Me Checkbox */}
+            <div className="remember-me-container">
+              <input
+                type="checkbox"
+                id="rememberMe"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="remember-me-checkbox"
+              />
+              <label htmlFor="rememberMe" className="remember-me-label">
+                Remember me
+              </label>
             </div>
 
             {/* Forgot Password Link */}

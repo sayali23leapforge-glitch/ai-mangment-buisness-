@@ -111,6 +111,10 @@ export default function TopBar({ onMenuClick, onRoleChange }: TopBarProps) {
       localStorage.removeItem("employeeEmail");
       localStorage.removeItem("userProfile");
       
+      // Clear Remember Me data
+      localStorage.removeItem("rememberMe");
+      localStorage.removeItem("rememberedEmail");
+      
       console.log("✅ Logged out - localStorage cleared");
       navigate("/login");
     } catch (error) {

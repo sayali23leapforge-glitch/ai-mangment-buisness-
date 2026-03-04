@@ -263,3 +263,52 @@
   border-color: #d4af37;
   color: #d4af37;
 }
+
+/* ============================================
+   REMEMBER ME CHECKBOX
+   ============================================ */
+.remember-me-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 16px 0;
+}
+
+.remember-me-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #d4af37;
+  border-radius: 3px;
+  border: 1px solid #333;
+  background: #111;
+  transition: all 0.2s ease;
+}
+
+.remember-me-checkbox:hover {
+  border-color: #d4af37;
+  box-shadow: 0 0 8px rgba(212, 175, 55, 0.2);
+}
+
+.remember-me-checkbox:checked {
+  background: #d4af37;
+  border-color: #d4af37;
+}
+
+.remember-me-label {
+  font-size: 13px;
+  color: #aaa;
+  user-select: none;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.remember-me-label:hover {
+  color: #d4af37;
+}
+
+.remember-me-checkbox:checked + .remember-me-label {
+  color: #d4af37;
+  font-weight: 500;
+}
+
