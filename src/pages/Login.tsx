@@ -159,7 +159,6 @@ export default function Login() {
             <div className="logo-box">
               <img src="/nayance-logo.jpeg" alt="Nayance" className="logo-icon" />
             </div>
-            <span className="logo-text">NAYANCE</span>
           </div>
 
           {/* Title */}
