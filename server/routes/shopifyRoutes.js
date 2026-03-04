@@ -745,6 +745,13 @@ router.post("/create-product", async (req, res) => {
       }
     }
 
+    // Fallback to server env credentials if Firestore lookup missing
+    if ((!shopUrl || !accessToken) && process.env.SHOPIFY_ACCESS_TOKEN && process.env.SHOPIFY_STORE) {
+      shopUrl = shopUrl || process.env.SHOPIFY_STORE;
+      accessToken = accessToken || process.env.SHOPIFY_ACCESS_TOKEN;
+      console.log("⚠️ Using Shopify credentials from server .env for create-product");
+    }
+
     if (!shopUrl || !accessToken || !product) {
       return res
         .status(400)
