@@ -8,8 +8,6 @@ import { useRole } from "../context/RoleContext";
 import { hasPermission } from "../utils/rolePermissions";
 import "../styles/RecordSale.css";
 
-type ExpenseLine = { label: string; amount: number };
-
 export default function RecordSale() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { currentRole } = useRole();
@@ -21,15 +19,6 @@ export default function RecordSale() {
   const [qty, setQty] = useState(1);
   const [cartItems, setCartItems] = useState<Array<{id: string, name: string, price: number, quantity: number}>>([]);
   const [completedSales, setCompletedSales] = useState<Array<{id: string, date: string, product: string, quantity: number, total: number}>>([]);
-
-  // Expense tracking
-  const [expenses, setExpenses] = useState<ExpenseLine[]>(() => {
-    const stored = localStorage.getItem("expenses");
-    return stored ? JSON.parse(stored) : [];
-  });
-  const [showExpenseForm, setShowExpenseForm] = useState(false);
-  const [expenseDesc, setExpenseDesc] = useState("");
-  const [expenseAmount, setExpenseAmount] = useState("");
 
   // Tax rate
   const [taxRate] = useState<number>(() => {
@@ -50,47 +39,6 @@ export default function RecordSale() {
   const getSelectedProduct = (): Product | undefined => {
     return products.find(p => p.id === selectedProductId);
   };
-
-  // Expense management
-  const addExpense = () => {
-    // Validate inputs
-    if (!expenseDesc.trim()) {
-      alert("Please enter an expense description");
-      return;
-    }
-
-    const amount = parseFloat(expenseAmount);
-    if (isNaN(amount) || amount <= 0) {
-      alert("Please enter a valid expense amount (greater than 0)");
-      return;
-    }
-
-    const newExpense: ExpenseLine = {
-      label: expenseDesc.trim(),
-      amount: amount
-    };
-
-    const updated = [...expenses, newExpense];
-    setExpenses(updated);
-    localStorage.setItem("expenses", JSON.stringify(updated));
-    
-    // 🔔 Dispatch custom event to notify other components
-    window.dispatchEvent(new CustomEvent("expensesUpdated", { detail: newExpense }));
-    
-    setExpenseDesc("");
-    setExpenseAmount("");
-  };
-
-  const deleteExpense = (index: number) => {
-    const updated = expenses.filter((_, i) => i !== index);
-    setExpenses(updated);
-    localStorage.setItem("expenses", JSON.stringify(updated));
-    
-    // 🔔 Dispatch custom event to notify other components
-    window.dispatchEvent(new CustomEvent("expensesUpdated", { detail: { deleted: true } }));
-  };
-
-
 
   // Add product to cart
   const addToCart = () => {
@@ -213,7 +161,6 @@ export default function RecordSale() {
     
     setCompletedSales([...newSales, ...completedSales]);
     setCartItems([]);
-    setShowExpenseForm(false); // Close expense form after sale
     
     alert("✅ Sale completed successfully! Check Financial Reports for detailed calculations.");
   };
@@ -371,72 +318,6 @@ export default function RecordSale() {
                   <span className="summary-label">Total</span>
                   <span className="summary-value">${total.toFixed(2)}</span>
                 </div>
-              </div>
-
-              {/* EXPENSES BOX */}
-              <div className="expenses-box">
-                <div className="expenses-header">
-                  <span>Operating Expenses</span>
-                  <button 
-                    className="toggle-expense-btn"
-                    onClick={() => setShowExpenseForm(!showExpenseForm)}
-                  >
-                    {showExpenseForm ? '−' : '+'}
-                  </button>
-                </div>
-
-                {showExpenseForm && (
-                  <div className="expense-form">
-                    <input
-                      type="text"
-                      placeholder="Expense description (e.g., Rent)"
-                      value={expenseDesc}
-                      onChange={(e) => setExpenseDesc(e.target.value)}
-                      className="expense-input"
-                    />
-                    <input
-                      type="number"
-                      placeholder="Amount"
-                      value={expenseAmount}
-                      onChange={(e) => setExpenseAmount(e.target.value)}
-                      className="expense-input"
-                    />
-                    <button 
-                      className="add-expense-btn"
-                      onClick={addExpense}
-                    >
-                      Add Expense
-                    </button>
-                  </div>
-                )}
-
-                <div className="expenses-list">
-                  {expenses.length === 0 ? (
-                    <div className="no-expenses">No expenses added</div>
-                  ) : (
-                    expenses.map((exp, idx) => (
-                      <div key={idx} className="expense-item">
-                        <div className="expense-info">
-                          <span className="expense-label">{exp.label}</span>
-                          <span className="expense-amount">${exp.amount.toFixed(2)}</span>
-                        </div>
-                        <button 
-                          className="delete-expense-btn"
-                          onClick={() => deleteExpense(idx)}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                {expenses.length > 0 && (
-                  <div className="expense-total">
-                    <span>Total Expenses</span>
-                    <span>${expenses.reduce((sum, exp) => sum + exp.amount, 0).toFixed(2)}</span>
-                  </div>
-                )}
               </div>
 
               {/* FINANCIAL IMPACT BOX */}

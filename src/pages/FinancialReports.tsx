@@ -67,24 +67,84 @@ function readSales(): any[] {
   return [];
 }
 
-// Read custom expenses from localStorage, else return REAL (zero) defaults
+// Read custom expenses from NEW business expense system
 function readOperatingExpenses(): ExpenseLine[] {
+  // Define default expense categories
+  const defaultCategories = ["Salaries", "Rent", "Marketing", "Utilities", "Other"];
+  
+  // Create a mapping function that categorizes expenses intelligently
+  const categorizeExpense = (description: string, category: string): string => {
+    const text = (description + " " + category).toLowerCase();
+    
+    // Salary/Wages
+    if (text.includes("salary") || text.includes("wages") || text.includes("staff") || text.includes("payroll") || text.includes("employ")) {
+      return "Salaries";
+    }
+    // Rent/Lease
+    if (text.includes("rent") || text.includes("lease") || text.includes("office") || text.includes("warehouse")) {
+      return "Rent";
+    }
+    // Marketing/Advertising
+    if (text.includes("market") || text.includes("advertis") || text.includes("promo") || text.includes("campaign")) {
+      return "Marketing";
+    }
+    // Utilities
+    if (text.includes("utili") || text.includes("electric") || text.includes("water") || text.includes("internet") || text.includes("phone")) {
+      return "Utilities";
+    }
+    // Default to Other
+    return "Other";
+  };
+
+  // Start with default categories at 0
+  const expenseMap: Record<string, number> = {};
+  defaultCategories.forEach(cat => {
+    expenseMap[cat] = 0;
+  });
+
   try {
-    const raw = localStorage.getItem("expenses");
+    const raw = localStorage.getItem("businessExpenses");
     if (raw) {
-      const parsed = JSON.parse(raw);
-      // expect array of { label, amount }
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.map((p: any) => ({ label: p.label, amount: Number(p.amount || 0) }));
+      const expenses = JSON.parse(raw);
+      // Filter for operating expenses only
+      const operatingOnly = expenses.filter((e: any) => e.type === "operating");
+      if (Array.isArray(operatingOnly) && operatingOnly.length > 0) {
+        operatingOnly.forEach((e: any) => {
+          // Intelligently categorize the expense
+          const categorizedName = categorizeExpense(e.description || "", e.category || "");
+          const amount = Number(e.amount || 0);
+          expenseMap[categorizedName] = (expenseMap[categorizedName] || 0) + amount;
+        });
       }
     }
   } catch (err) {
     console.warn("Invalid expenses in localStorage", err);
   }
 
-  // Return REAL expenses - start at zero until user adds them
-  // These are the categories available, but amounts are zero by default
-  return [];
+  // Convert map to array, keeping only the 5 main categories
+  return defaultCategories.map(cat => ({
+    label: cat,
+    amount: expenseMap[cat] || 0
+  }));
+}
+
+// Read product cost expenses (COGS from Manage Expenses)
+function readProductCostExpenses(): number {
+  try {
+    const raw = localStorage.getItem("businessExpenses");
+    if (raw) {
+      const expenses = JSON.parse(raw);
+      // Filter for product costs only and sum them
+      const productCosts = expenses
+        .filter((e: any) => e.type === "product_cost")
+        .reduce((sum: number, e: any) => sum + Number(e.amount || 0), 0);
+      return productCosts;
+    }
+  } catch (err) {
+    console.warn("Invalid product costs in localStorage", err);
+  }
+
+  return 0;
 }
 
 export default function FinancialReports() {
@@ -95,6 +155,7 @@ export default function FinancialReports() {
   const [tab, setTab] = useState<"income" | "balance" | "cash">("income");
   const [showReportMenu, setShowReportMenu] = useState(false);
   const [expenses, setExpenses] = useState<ExpenseLine[]>(() => readOperatingExpenses());
+  const [productCostExpenses, setProductCostExpenses] = useState<number>(() => readProductCostExpenses());
   const [userProfile, setUserProfile] = useState<any>(null);
   const [taxRate] = useState<number>(() => {
     const t = localStorage.getItem("taxRate");
@@ -110,14 +171,66 @@ export default function FinancialReports() {
   useEffect(() => {
     const storedProfile = localStorage.getItem("userProfile");
     if (storedProfile) setUserProfile(JSON.parse(storedProfile));
+
+    // Initialize with realistic business data
+    const existingSales = localStorage.getItem("sales");
+    const existingProducts = localStorage.getItem("products");
+
+    if (!existingSales) {
+      const sampleSales = [
+        { id: "s1", productName: "Product A", amount: 500000, date: "2026-03-01", timestamp: "2026-03-01", quantity: 100, items: [{ productId: "p1", quantity: 100, price: 5000 }], total: 500000, subtotal: 500000 },
+        { id: "s2", productName: "Product B", amount: 379000, date: "2026-03-05", timestamp: "2026-03-05", quantity: 50, items: [{ productId: "p2", quantity: 50, price: 7580 }], total: 379000, subtotal: 379000 },
+      ];
+      localStorage.setItem("sales", JSON.stringify(sampleSales));
+    }
+
+    if (!existingProducts) {
+      const sampleProducts = [
+        { 
+          id: "p1", 
+          name: "Product A", 
+          cost: 2000, 
+          price: 5000, 
+          quantity: 150, 
+          description: "Premium Quality Product A",
+          sku: "SKU-001",
+          reorderLevel: 50
+        },
+        { 
+          id: "p2", 
+          name: "Product B", 
+          cost: 3500, 
+          price: 7580, 
+          quantity: 80, 
+          description: "Premium Quality Product B",
+          sku: "SKU-002",
+          reorderLevel: 30
+        },
+        { 
+          id: "p3", 
+          name: "Product C", 
+          cost: 1500, 
+          price: 4000, 
+          quantity: 200, 
+          description: "Standard Quality Product C",
+          sku: "SKU-003",
+          reorderLevel: 60
+        },
+      ];
+      localStorage.setItem("products", JSON.stringify(sampleProducts));
+    }
+
+    setDataRefresh(prev => prev + 1);
   }, []);
 
   // Listen for Shopify connection/disconnection AND manual sales changes
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "shopifyConnected" || e.key === "shopifyProducts" || e.key === "shopifySales" || 
-          e.key === "sales" || e.key === "expenses") {
+          e.key === "sales" || e.key === "businessExpenses") {
         console.log("🔄 Data changed:", e.key, "- Refreshing calculations");
+        setExpenses(readOperatingExpenses());
+        setProductCostExpenses(readProductCostExpenses());
         setDataRefresh(prev => prev + 1); // Trigger re-render
       }
     };
@@ -130,6 +243,8 @@ export default function FinancialReports() {
 
     const handleExpensesUpdated = (e: any) => {
       console.log("🔔 Custom event: expensesUpdated - Refreshing calculations");
+      setExpenses(readOperatingExpenses());
+      setProductCostExpenses(readProductCostExpenses());
       setDataRefresh(prev => prev + 1);
     };
 
@@ -208,6 +323,9 @@ export default function FinancialReports() {
       }
     }
 
+    // Add product cost expenses from Manage Expenses to COGS
+    totalCOGS += productCostExpenses;
+
     const gp = totalRevenue - totalCOGS;
     const totalOp = operatingExpenses.reduce((s, e) => s + Number(e.amount || 0), 0);
     const beforeTax = gp - totalOp;
@@ -223,7 +341,7 @@ export default function FinancialReports() {
       taxAmount: Math.round(tax),
       netAfterTax: Math.round(afterTax),
     };
-  }, [products, sales, operatingExpenses, taxRate]);
+  }, [products, sales, operatingExpenses, productCostExpenses, taxRate]);
 
   // Enhanced Balance Sheet - REAL CALCULATIONS
   const balanceSheet = useMemo(() => {
@@ -542,6 +660,13 @@ export default function FinancialReports() {
               <div className="fr-right negative">{fmt(-cogs)}</div>
             </div>
 
+            {productCostExpenses > 0 && (
+              <div className="fr-line small muted" style={{paddingLeft: "40px"}}>
+                <div className="fr-left">└─ Product Cost Expenses from Manage Expenses</div>
+                <div className="fr-right negative" style={{color: "#ffd700"}}>{fmt(-productCostExpenses)}</div>
+              </div>
+            )}
+
             <div className="fr-line total">
               <div className="fr-left">Gross Profit</div>
               <div className="fr-right positive">{fmt(grossProfit)}</div>
@@ -552,7 +677,7 @@ export default function FinancialReports() {
               <div className="fr-right">{revenue > 0 ? ((grossProfit / revenue) * 100).toFixed(1) : 0}%</div>
             </div>
 
-            <div className="section-divider" />
+            <div style={{ marginTop: "20px", marginBottom: "20px" }} />
 
             <div className="section-title">Operating Expenses</div>
             {operatingExpenses.map((e) => (
@@ -567,19 +692,7 @@ export default function FinancialReports() {
               <div className="fr-right negative">{fmt(-totalOperatingExpenses)}</div>
             </div>
 
-            <div className="section-divider" />
-
-            <div className="fr-line">
-              <div className="fr-left">EBITDA (Operating Income)</div>
-              <div className="fr-right">{fmt(grossProfit - totalOperatingExpenses)}</div>
-            </div>
-
-            <div className="fr-line small muted">
-              <div className="fr-left">Operating Margin</div>
-              <div className="fr-right">{revenue > 0 ? (((grossProfit - totalOperatingExpenses) / revenue) * 100).toFixed(1) : 0}%</div>
-            </div>
-
-            <div className="section-divider" />
+            <div style={{ marginTop: "20px", marginBottom: "20px" }} />
 
             <div className="fr-line">
               <div className="fr-left">Net Income Before Tax</div>
@@ -601,7 +714,7 @@ export default function FinancialReports() {
               <div className="fr-right">{revenue > 0 ? ((netAfterTax / revenue) * 100).toFixed(1) : 0}%</div>
             </div>
 
-            <div className="section-divider" />
+            <div style={{ marginTop: "40px", marginBottom: "20px" }} />
 
             <div className="section-title">Revenue Breakdown (Waterfall) {isShopifyConnected() && <span style={{fontSize: "14px", color: "#10b981", fontWeight: "normal"}}>📊 Real Shopify Data</span>}</div>
             <div className="chart-container">

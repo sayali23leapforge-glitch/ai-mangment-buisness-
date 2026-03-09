@@ -17,6 +17,7 @@ import AddProduct from "./pages/AddProduct";
 import QRManager from "./pages/QRManager"; 
 import AIInsights from "./pages/AIInsights";
 import FinancialReports from "./pages/FinancialReports";
+import ManageExpenses from "./pages/ManageExpenses";
 import TaxCenter from "./pages/TaxCenter";
 import TeamManagement from "./pages/TeamManagement";
 import BillingPlan from "./pages/BillingPlan";
@@ -138,6 +139,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <FinancialReports />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/manage-expenses"
+            element={
+              <ProtectedRoute>
+                <ManageExpenses />
               </ProtectedRoute>
             }
           />

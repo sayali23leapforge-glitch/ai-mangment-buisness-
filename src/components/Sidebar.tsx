@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import {
   Wallet, Boxes, ShoppingCart, BarChart2, PlusSquare,
   QrCode, Sparkles, ReceiptText, Banknote, Link as LinkIcon,
-  Users, CreditCard, Settings, Zap, TrendingUp
+  Users, CreditCard, Settings, Zap, TrendingUp, DollarSign
 } from "lucide-react";
 import { useRole } from "../context/RoleContext";
 import { hasPermission } from "../utils/rolePermissions";
@@ -33,6 +33,7 @@ export default function Sidebar({ sidebarOpen, onMenuClick }: SidebarProps) {
     { icon: QrCode, label: "QR & Barcodes", feature: "qr_barcodes" },
     { icon: Sparkles, label: "AI Insights", feature: "ai_insights" },
     { icon: ReceiptText, label: "Financial Reports", feature: "financial_reports" },
+    { icon: DollarSign, label: "Manage Expenses", feature: "expense_management" },
     { icon: Banknote, label: "Tax Center", feature: "tax_center" },
     { icon: LinkIcon, label: "Integrations", feature: "integrations" },
     { icon: Users, label: "Team Management", feature: "team_management" },
