@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { useNavigate } from 'react-router-dom';
 import { getIntegrations } from '../utils/integrationStore';
+import { getAllCountries, getStatesByCountry } from '../utils/countriesAndStates';
+import './SignUp.css';
 
 export default function SignUp() {
   const [formData, setFormData] = useState({
@@ -20,14 +22,34 @@ export default function SignUp() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [countrySearch, setCountrySearch] = useState('');
+  const [stateSearch, setStateSearch] = useState('');
+  const [showCountryDropdown, setShowCountryDropdown] = useState(false);
+  const [showStateDropdown, setShowStateDropdown] = useState(false);
   const navigate = useNavigate();
+  const formRef = useRef<HTMLDivElement>(null);
 
-  const countries = [
-    { code: 'US', name: 'United States', flag: '🇺🇸' },
-    { code: 'CA', name: 'Canada', flag: '🇨🇦' },
-    { code: 'UK', name: 'United Kingdom', flag: '🇬🇧' },
-    { code: 'AU', name: 'Australia', flag: '🇦🇺' },
-  ];
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (formRef.current && !formRef.current.contains(event.target as Node)) {
+        setShowCountryDropdown(false);
+        setShowStateDropdown(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const countries = getAllCountries();
+  const filteredCountries = countries.filter(c => 
+    c.name.toLowerCase().startsWith(countrySearch.toLowerCase())
+  );
+  const states = formData.country ? getStatesByCountry(formData.country) : [];
+  const filteredStates = states.filter(s =>
+    s.toLowerCase().startsWith(stateSearch.toLowerCase())
+  );
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -137,7 +159,7 @@ export default function SignUp() {
           )}
 
           {/* Form */}
-          <form onSubmit={handleSignUp} style={{ marginBottom: '0.8rem' }}>
+          <form ref={formRef} onSubmit={handleSignUp} style={{ marginBottom: '0.8rem' }}>
             {/* Full Name & Email - Row 1 */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.7rem' }}>
               <div>
@@ -229,7 +251,7 @@ export default function SignUp() {
 
             {/* Country & Province/State - Row 3 */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.7rem' }}>
-              <div>
+              <div style={{ position: 'relative' }}>
                 <label className="form-label">Country</label>
                 <div className="input-wrapper">
                   <span className="input-icon">
@@ -240,24 +262,70 @@ export default function SignUp() {
                       <circle cx="12" cy="12" r="2" fill="currentColor" />
                     </svg>
                   </span>
-                  <select
-                    name="country"
-                    value={formData.country}
-                    onChange={handleChange}
+                  <input
+                    type="text"
+                    placeholder="Type country name..."
+                    value={countrySearch || formData.country}
+                    onChange={(e) => {
+                      setCountrySearch(e.target.value);
+                      setFormData(prev => ({ ...prev, country: '', province: '' }));
+                      setShowCountryDropdown(true);
+                    }}
+                    onFocus={() => setShowCountryDropdown(true)}
                     required
                     className="form-input"
                     style={{ paddingLeft: '2.8rem' }}
-                  >
-                    <option value="">Select country</option>
-                    {countries.map((country) => (
-                      <option key={country.code} value={country.name}>
-                        {country.name}
-                      </option>
-                    ))}
-                  </select>
+                  />
+                  {showCountryDropdown && (
+                    <div className="country-dropdown" style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      backgroundColor: '#000',
+                      border: '1px solid #333',
+                      borderTop: 'none',
+                      maxHeight: '250px',
+                      overflowY: 'auto',
+                      zIndex: 1000,
+                      borderRadius: '0 0 8px 8px',
+                      boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
+                    }}>
+                      {filteredCountries.length > 0 ? (
+                        filteredCountries.map((country) => (
+                          <div
+                            key={country.code}
+                            onClick={() => {
+                              setFormData(prev => ({ ...prev, country: country.name, province: '' }));
+                              setCountrySearch('');
+                              setStateSearch('');
+                              setShowCountryDropdown(false);
+                            }}
+                            style={{
+                              padding: '12px 16px',
+                              cursor: 'pointer',
+                              borderBottom: '1px solid #333',
+                              color: '#fff',
+                              fontSize: '14px',
+                              lineHeight: '1.5',
+                              transition: 'background-color 0.15s ease',
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#222'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                          >
+                            {country.name}
+                          </div>
+                        ))
+                      ) : (
+                        <div style={{ padding: '12px 16px', color: '#aaa', fontSize: '14px' }}>
+                          {countrySearch ? `No countries found matching "${countrySearch}"` : 'No countries available'}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
-              <div>
+              <div style={{ position: 'relative' }}>
                 <label className="form-label">Province/State</label>
                 <div className="input-wrapper">
                   <span className="input-icon">
@@ -265,18 +333,65 @@ export default function SignUp() {
                       <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
                     </svg>
                   </span>
-                  <select
-                    name="province"
-                    value={formData.province}
-                    onChange={handleChange}
+                  <input
+                    type="text"
+                    placeholder={formData.country ? "Type state/province..." : "Select country first"}
+                    value={stateSearch || formData.province}
+                    onChange={(e) => {
+                      setStateSearch(e.target.value);
+                      setShowStateDropdown(true);
+                    }}
+                    onFocus={() => formData.country && setShowStateDropdown(true)}
+                    disabled={!formData.country}
                     className="form-input"
-                    style={{ paddingLeft: '2.8rem' }}
-                  >
-                    <option value="">Select province/state</option>
-                    <option value="Ontario">Ontario</option>
-                    <option value="Quebec">Quebec</option>
-                    <option value="British Columbia">British Columbia</option>
-                  </select>
+                    style={{ paddingLeft: '2.8rem', opacity: formData.country ? 1 : 0.6 }}
+                  />
+                  {showStateDropdown && formData.country && (
+                    <div className="state-dropdown" style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      backgroundColor: '#000',
+                      border: '1px solid #333',
+                      borderTop: 'none',
+                      maxHeight: '250px',
+                      overflowY: 'auto',
+                      zIndex: 1000,
+                      borderRadius: '0 0 8px 8px',
+                      boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
+                    }}>
+                      {filteredStates.length > 0 ? (
+                        filteredStates.map((state) => (
+                          <div
+                            key={state}
+                            onClick={() => {
+                              setFormData(prev => ({ ...prev, province: state }));
+                              setStateSearch('');
+                              setShowStateDropdown(false);
+                            }}
+                            style={{
+                              padding: '12px 16px',
+                              cursor: 'pointer',
+                              borderBottom: '1px solid #333',
+                              color: '#fff',
+                              fontSize: '14px',
+                              lineHeight: '1.5',
+                              transition: 'background-color 0.15s ease',
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#222'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                          >
+                            {state}
+                          </div>
+                        ))
+                      ) : (
+                        <div style={{ padding: '12px 16px', color: '#aaa', fontSize: '14px' }}>
+                          {stateSearch ? `No states found matching "${stateSearch}"` : 'No states available'}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

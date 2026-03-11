@@ -1,0 +1,21 @@
+/* Scrollbar styling for dropdowns */
+.country-dropdown::-webkit-scrollbar,
+.state-dropdown::-webkit-scrollbar {
+  width: 8px;
+}
+
+.country-dropdown::-webkit-scrollbar-track,
+.state-dropdown::-webkit-scrollbar-track {
+  background: #000;
+}
+
+.country-dropdown::-webkit-scrollbar-thumb,
+.state-dropdown::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
+
+.country-dropdown::-webkit-scrollbar-thumb:hover,
+.state-dropdown::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
