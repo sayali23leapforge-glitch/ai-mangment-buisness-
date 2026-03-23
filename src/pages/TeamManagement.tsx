@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Users2, CheckCircle, Users, Lock, Search, Trash2, Eye, EyeOff, Wallet, BarChart2 } from "lucide-react";
+import { Users2, CheckCircle, Users, Lock, Search, Trash2, Eye, EyeOff, Wallet, BarChart2, LockIcon } from "lucide-react";
 import TopBar from "../components/TopBar";
 import Sidebar from "../components/Sidebar";
 import { useAuth } from "../context/AuthContext";
 import { useRole } from "../context/RoleContext";
 import { hasPermission } from "../utils/rolePermissions";
+import { useSubscription } from "../context/SubscriptionContext";
 import {
   createTeamInvite,
   subscribeToTeamInvites,
@@ -19,6 +20,7 @@ import "../styles/teamManagement.css";
 const TeamManagement = () => {
   const { user } = useAuth();
   const { currentRole } = useRole();
+  const { tier } = useSubscription();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [_selectedRole, setSelectedRole] = useState("Owner (Full Access)");
@@ -242,6 +244,28 @@ const TeamManagement = () => {
     member.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
     member.role.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Check if user has access to Team Management (Growth+ plan required)
+  if (tier === "free") {
+    return (
+      <div className="dashboard-wrapper">
+        <Sidebar sidebarOpen={sidebarOpen} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
+        <main className="dashboard-main">
+          <TopBar onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
+          <div className="scrollable-content">
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "400px", flexDirection: "column", textAlign: "center", gap: "20px" }}>
+              <LockIcon size={64} color="#999" />
+              <h2>Team Management Requires Growth Plan</h2>
+              <p style={{ color: "#666", maxWidth: "400px" }}>Add team members and manage access. Growth plan supports up to 5 team members, Pro plan supports unlimited members.</p>
+              <Link to="/billing" style={{ marginTop: "10px", padding: "10px 20px", backgroundColor: "#007bff", color: "white", borderRadius: "5px", textDecoration: "none" }}>
+                View Plans
+              </Link>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="dashboard-wrapper">

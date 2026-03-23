@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
-import { Plus, Trash2, Edit2, DollarSign, TrendingDown, BarChart3 } from "lucide-react";
+import { Plus, Trash2, Edit2, DollarSign, TrendingDown, BarChart3, Lock } from "lucide-react";
+import { Link } from "react-router-dom";
 import TopBar from "../components/TopBar";
 import Sidebar from "../components/Sidebar";
 import { useRole } from "../context/RoleContext";
 import { hasPermission } from "../utils/rolePermissions";
+import { useSubscription } from "../context/SubscriptionContext";
 import "../styles/ManageExpenses.css";
 
 interface Expense {
@@ -19,6 +21,7 @@ interface Expense {
 export default function ManageExpenses() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { currentRole } = useRole();
+  const { tier } = useSubscription();
   const [userProfile, setUserProfile] = useState<any>(null);
 
   const [expenses, setExpenses] = useState<Expense[]>([]);

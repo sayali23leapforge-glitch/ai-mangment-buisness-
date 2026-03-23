@@ -1,10 +1,11 @@
 import { useMemo, useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend, PieChart, Pie } from "recharts";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Lock } from "lucide-react";
 import TopBar from "../components/TopBar";
 import Sidebar from "../components/Sidebar";
 import { useRole } from "../context/RoleContext";
+import { useSubscription } from "../context/SubscriptionContext";
 import { hasPermission } from "../utils/rolePermissions";
 import { getProducts, Product } from "../utils/localProductStore";
 import { isShopifyConnected, getShopifyProductsFromStorage, getShopifySalesFromStorage } from "../utils/shopifyDataFetcher";
@@ -150,6 +151,7 @@ function readProductCostExpenses(): number {
 export default function FinancialReports() {
   const roleContext = useRole();
   const currentRole = roleContext?.currentRole || "user";
+  const { tier } = useSubscription();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [tab, setTab] = useState<"income" | "balance" | "cash">("income");
@@ -537,6 +539,28 @@ export default function FinancialReports() {
     } finally {
       setIsRefreshing(false);
     }
+  }
+
+  // Check if user has access to advanced Financial Reports (Growth+ for advanced features)
+  if (tier === "free") {
+    return (
+      <div className="dashboard-wrapper">
+        <Sidebar sidebarOpen={sidebarOpen} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
+        <main className="dashboard-main">
+          <TopBar onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
+          <div className="scrollable-content">
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "400px", flexDirection: "column", textAlign: "center", gap: "20px" }}>
+              <Lock size={64} color="#999" />
+              <h2>Financial Reports Require Growth Plan</h2>
+              <p style={{ color: "#666", maxWidth: "400px" }}>Access detailed financial analysis, forecasting, and comprehensive reports. Available in Growth and Pro plans.</p>
+              <Link to="/billing" style={{ marginTop: "10px", padding: "10px 20px", backgroundColor: "#007bff", color: "white", borderRadius: "5px", textDecoration: "none" }}>
+                View Plans
+              </Link>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
   }
 
   return (

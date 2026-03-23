@@ -1,17 +1,19 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { QRCodeCanvas } from "qrcode.react";
-import { QrCode, Download, Share2, Printer } from "lucide-react";
+import { QrCode, Download, Share2, Printer, Lock } from "lucide-react";
 import TopBar from "../components/TopBar";
 import Sidebar from "../components/Sidebar";
 import { useRole } from "../context/RoleContext";
 import { hasPermission } from "../utils/rolePermissions";
+import { useSubscription } from "../context/SubscriptionContext";
 import "../styles/QRManager.css";
 
 export default function QRManager() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { currentRole } = useRole();
   const location = useLocation();
+  const { tier } = useSubscription();
   const [userProfile, setUserProfile] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("qr");
   const [products, setProducts] = useState([]);
@@ -26,6 +28,28 @@ export default function QRManager() {
   }, []);
 
 
+
+  // Check if user has access to QR Manager (Growth+ plan required)
+  if (tier === "free") {
+    return (
+      <div className="dashboard-wrapper">
+        <Sidebar sidebarOpen={sidebarOpen} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
+        <main className="dashboard-main">
+          <TopBar onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
+          <div className="scrollable-content">
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "400px", flexDirection: "column", textAlign: "center", gap: "20px" }}>
+              <Lock size={64} color="#999" />
+              <h2>QR & Barcode Manager Requires Growth Plan</h2>
+              <p style={{ color: "#666", maxWidth: "400px" }}>Generate and manage QR codes and barcodes for your products. Available in Growth and Pro plans.</p>
+              <Link to="/billing" style={{ marginTop: "10px", padding: "10px 20px", backgroundColor: "#007bff", color: "white", borderRadius: "5px", textDecoration: "none" }}>
+                View Plans
+              </Link>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="dashboard-wrapper">
