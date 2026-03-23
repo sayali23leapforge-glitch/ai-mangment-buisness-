@@ -13,7 +13,7 @@ export default function QRManager() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { currentRole } = useRole();
   const location = useLocation();
-  const { tier } = useSubscription();
+  const { tier, trialExpired } = useSubscription();
   const [userProfile, setUserProfile] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("qr");
   const [products, setProducts] = useState([]);
@@ -30,7 +30,7 @@ export default function QRManager() {
 
 
   // Check if user has access to QR Manager (Growth+ plan required)
-  if (tier === "free") {
+  if (tier === "free" || trialExpired) {
     return (
       <div className="dashboard-wrapper">
         <Sidebar sidebarOpen={sidebarOpen} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
@@ -39,8 +39,8 @@ export default function QRManager() {
           <div className="scrollable-content">
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "400px", flexDirection: "column", textAlign: "center", gap: "20px" }}>
               <Lock size={64} color="#999" />
-              <h2>QR & Barcode Manager Requires Growth Plan</h2>
-              <p style={{ color: "#666", maxWidth: "400px" }}>Generate and manage QR codes and barcodes for your products. Available in Growth and Pro plans.</p>
+              <h2>{trialExpired ? "Trial Expired - Upgrade to Continue" : "QR & Barcode Manager Requires Growth Plan"}</h2>
+              <p style={{ color: "#666", maxWidth: "400px" }}>{trialExpired ? "Your trial period has ended. Choose a plan to continue using QR code generation." : "Generate and manage QR codes and barcodes for your products. Available in Growth and Pro plans."}</p>
               <Link to="/billing" style={{ marginTop: "10px", padding: "10px 20px", backgroundColor: "#007bff", color: "white", borderRadius: "5px", textDecoration: "none" }}>
                 View Plans
               </Link>

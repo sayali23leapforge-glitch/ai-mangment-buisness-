@@ -29,7 +29,7 @@ export default function AIInsights() {
   const { user } = useAuth();
   const roleContext = useRole();
   const currentRole = roleContext?.currentRole || "user";
-  const { tier } = useSubscription();
+  const { tier, trialExpired } = useSubscription();
 
   useEffect(() => {
     const storedProfile = localStorage.getItem("userProfile");
@@ -106,7 +106,7 @@ export default function AIInsights() {
     };
   }, [user, forceRefresh]);
   // Check if user has access to AI Insights (Growth+ plan required)
-  if (tier === "free") {
+  if (tier === "free" || trialExpired) {
     return (
       <div className="dashboard-wrapper">
         <Sidebar sidebarOpen={sidebarOpen} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
@@ -115,8 +115,12 @@ export default function AIInsights() {
           <div className="scrollable-content">
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "400px", flexDirection: "column", textAlign: "center", gap: "20px" }}>
               <Lock size={64} color="#999" />
-              <h2>AI Insights Requires Growth Plan</h2>
-              <p style={{ color: "#666", maxWidth: "400px" }}>Get advanced AI-powered insights into your business. Available in Growth and Pro plans.</p>
+              <h2>{trialExpired ? "Trial Expired - Upgrade to Continue" : "AI Insights Requires Growth Plan"}</h2>
+              <p style={{ color: "#666", maxWidth: "400px" }}>
+                {trialExpired 
+                  ? "Your trial period has ended. Choose a plan to continue using advanced AI-powered insights." 
+                  : "Get advanced AI-powered insights into your business. Available in Growth and Pro plans."}
+              </p>
               <Link to="/billing" style={{ marginTop: "10px", padding: "10px 20px", backgroundColor: "#007bff", color: "white", borderRadius: "5px", textDecoration: "none" }}>
                 View Plans
               </Link>

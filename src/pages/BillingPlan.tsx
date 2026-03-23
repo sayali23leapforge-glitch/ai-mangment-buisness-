@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Check, Lock } from "lucide-react";
+import { Check, Lock, AlertCircle } from "lucide-react";
 import TopBar from "../components/TopBar";
 import Sidebar from "../components/Sidebar";
 import { useAuth } from "../context/AuthContext";
+import { useSubscription } from "../context/SubscriptionContext";
 import { useRole } from "../context/RoleContext";
 import { hasPermission } from "../utils/rolePermissions";
 import { isMenuFeatureAvailable, getUpgradePlanForFeature } from "../utils/stripeUtils";
@@ -38,6 +39,7 @@ const BillingPlan = () => {
   const roleContext = useRole();
   const currentRole = roleContext?.currentRole || "user";
   const { user } = useAuth();
+  const { trialExpired } = useSubscription();
   const [searchParams] = useSearchParams();
   
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -397,6 +399,26 @@ const BillingPlan = () => {
             {successMessage && (
               <div className="success-banner">
                 {successMessage}
+              </div>
+            )}
+
+            {/* Trial Expired Alert */}
+            {trialExpired && (
+              <div style={{
+                backgroundColor: "#fee2e2",
+                border: "2px solid #ef4444",
+                borderRadius: "8px",
+                padding: "16px 20px",
+                marginBottom: "20px",
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+              }}>
+                <AlertCircle size={24} color="#ef4444" />
+                <div>
+                  <h3 style={{ color: "#991b1b", margin: "0 0 4px 0", fontWeight: 600 }}>Trial Expired</h3>
+                  <p style={{ color: "#7f1d1d", margin: 0, fontSize: "14px" }}>Your trial period has ended. Please choose a plan below to continue using premium features.</p>
+                </div>
               </div>
             )}
 

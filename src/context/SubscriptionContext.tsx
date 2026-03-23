@@ -31,6 +31,8 @@ interface SubscriptionContextType {
   updateSubscription: (plan: string, cycle: string, endDate: string) => void;
   tier: PlanTier;
   canAccess: (feature: FeatureName) => boolean;
+  trialExpired: boolean;
+  isTrialActive: boolean;
 }
 
 // Feature access matrix
@@ -47,6 +49,8 @@ export const SubscriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
   const [userPlan, setUserPlan] = React.useState<PlanTier>("free");
   const [userBillingCycle, setUserBillingCycle] = React.useState<"monthly" | "yearly" | null>(null);
   const [subscriptionEndDate, setSubscriptionEndDate] = React.useState<Date | null>(null);
+  const [trialExpired, setTrialExpired] = React.useState(false);
+  const [isTrialActive, setIsTrialActive] = React.useState(false);
 
   // Fetch user's actual plan from Firestore when component loads
   useEffect(() => {
@@ -60,12 +64,31 @@ export const SubscriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
           const plan = data?.plan || "free";
           const cycle = data?.billing_cycle || null;
           const endDate = data?.subscription_end_date ? new Date(data.subscription_end_date) : null;
+          const trialActive = data?.trial_active || false;
+
+          // Check if trial/subscription has expired
+          const now = new Date();
+          let hasExpired = false;
+          let isTrial = false;
+
+          if (plan !== "free" && endDate && endDate < now) {
+            // Subscription/trial has expired - user must pay to continue
+            hasExpired = true;
+            console.log(`⏰ Trial/Subscription expired on ${endDate.toLocaleDateString()}`);
+          } else if (plan !== "free" && endDate) {
+            // Check if this is still a trial period
+            isTrial = trialActive === true;
+            const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+            console.log(`📊 ${isTrial ? "Trial" : "Subscription"} active: ${daysLeft} days left`);
+          }
 
           setUserPlan(plan as PlanTier);
           setUserBillingCycle(cycle as "monthly" | "yearly" | null);
           setSubscriptionEndDate(endDate);
+          setTrialExpired(hasExpired);
+          setIsTrialActive(isTrial);
 
-          console.log(`📊 SubscriptionContext loaded: ${plan} (${cycle})`);
+          console.log(`📊 SubscriptionContext loaded: ${plan} (${cycle}), trial_expired: ${hasExpired}, trial_active: ${isTrial}`);
         }
       } catch (error) {
         console.error("Error fetching subscription:", error);
@@ -94,6 +117,8 @@ export const SubscriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
         updateSubscription,
         tier: userPlan,
         canAccess,
+        trialExpired,
+        isTrialActive,
       }}
     >
       {children}

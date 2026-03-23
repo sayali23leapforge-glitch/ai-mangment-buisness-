@@ -20,7 +20,7 @@ import "../styles/teamManagement.css";
 const TeamManagement = () => {
   const { user } = useAuth();
   const { currentRole } = useRole();
-  const { tier } = useSubscription();
+  const { tier, trialExpired } = useSubscription();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [_selectedRole, setSelectedRole] = useState("Owner (Full Access)");
@@ -246,7 +246,7 @@ const TeamManagement = () => {
   );
 
   // Check if user has access to Team Management (Growth+ plan required)
-  if (tier === "free") {
+  if (tier === "free" || trialExpired) {
     return (
       <div className="dashboard-wrapper">
         <Sidebar sidebarOpen={sidebarOpen} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
@@ -255,8 +255,8 @@ const TeamManagement = () => {
           <div className="scrollable-content">
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "400px", flexDirection: "column", textAlign: "center", gap: "20px" }}>
               <LockIcon size={64} color="#999" />
-              <h2>Team Management Requires Growth Plan</h2>
-              <p style={{ color: "#666", maxWidth: "400px" }}>Add team members and manage access. Growth plan supports up to 5 team members, Pro plan supports unlimited members.</p>
+              <h2>{trialExpired ? "Trial Expired - Upgrade to Continue" : "Team Management Requires Growth Plan"}</h2>
+              <p style={{ color: "#666", maxWidth: "400px" }}>{trialExpired ? "Your trial period has ended. Choose a plan to continue managing team members." : "Add team members and manage access. Growth plan supports up to 5 team members, Pro plan supports unlimited members."}</p>
               <Link to="/billing" style={{ marginTop: "10px", padding: "10px 20px", backgroundColor: "#007bff", color: "white", borderRadius: "5px", textDecoration: "none" }}>
                 View Plans
               </Link>

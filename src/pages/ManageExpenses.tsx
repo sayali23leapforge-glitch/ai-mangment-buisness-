@@ -21,7 +21,7 @@ interface Expense {
 export default function ManageExpenses() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { currentRole } = useRole();
-  const { tier } = useSubscription();
+  const { tier, trialExpired } = useSubscription();
   const [userProfile, setUserProfile] = useState<any>(null);
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -170,6 +170,27 @@ export default function ManageExpenses() {
       <div className="access-denied">
         <h2>Access Denied</h2>
         <p>You don't have permission to manage expenses.</p>
+      </div>
+    );
+  }
+
+  if (tier === "free" || trialExpired) {
+    return (
+      <div className="dashboard-wrapper">
+        <Sidebar sidebarOpen={sidebarOpen} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
+        <main className="dashboard-main">
+          <TopBar onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
+          <div className="scrollable-content">
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "400px", flexDirection: "column", textAlign: "center", gap: "20px" }}>
+              <Lock size={64} color="#999" />
+              <h2>{trialExpired ? "Trial Expired - Upgrade to Continue" : "Expense Management Requires Growth Plan"}</h2>
+              <p style={{ color: "#666", maxWidth: "400px" }}>{trialExpired ? "Your trial period has ended. Choose a plan to continue managing expenses." : "Track operating expenses and product costs. Available in Growth and Pro plans."}</p>
+              <Link to="/billing" style={{ marginTop: "10px", padding: "10px 20px", backgroundColor: "#007bff", color: "white", borderRadius: "5px", textDecoration: "none" }}>
+                View Plans
+              </Link>
+            </div>
+          </div>
+        </main>
       </div>
     );
   }
