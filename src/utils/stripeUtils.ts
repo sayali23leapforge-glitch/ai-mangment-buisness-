@@ -20,6 +20,29 @@ export const STRIPE_PRICES = {
   },
 };
 
+// ============ PLAN TRIAL CONFIGURATION ============
+// Trial periods for each plan
+export const PLAN_TRIALS = {
+  free: {
+    enabled: true,
+    days: 14,
+    description: "2 weeks free trial, then $15.99/month",
+    convertsTo: "growth",
+  },
+  growth: {
+    enabled: true,
+    days: 7,
+    description: "7-day free trial, then automatic subscription",
+    autoSubscribe: true,
+  },
+  pro: {
+    enabled: true,
+    days: 7,
+    description: "7-day free trial, then automatic subscription",
+    autoSubscribe: true,
+  },
+};
+
 // ============ TYPES ============
 
 export type PlanType = "free" | "growth" | "pro";

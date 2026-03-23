@@ -124,26 +124,45 @@ const BillingPlan = () => {
           if (upgradedPlan && (upgradedPlan === "growth" || upgradedPlan === "pro") && cycle) {
             console.log(`💾 Updating Firestore...`);
             
-            // Calculate subscription end date
-            const endDate = new Date();
-            if (cycle === "monthly") {
-              endDate.setMonth(endDate.getMonth() + 1);
-            } else {
-              endDate.setFullYear(endDate.getFullYear() + 1);
+            // Check if there's a pending trial from localStorage
+            const trialDataKey = `trial_pending_${user.uid}`;
+            const trialData = localStorage.getItem(trialDataKey);
+            let trialEndDate: Date | null = null;
+            
+            if (trialData) {
+              try {
+                const parsed = JSON.parse(trialData);
+                trialEndDate = new Date(parsed.trialEndDate);
+                localStorage.removeItem(trialDataKey);
+              } catch (e) {
+                console.error("Error parsing trial data:", e);
+              }
             }
             
-            // Update Firestore with the new plan, cycle, and expiration date
+            // If no trial date, calculate subscription end date
+            if (!trialEndDate) {
+              trialEndDate = new Date();
+              if (cycle === "monthly") {
+                trialEndDate.setMonth(trialEndDate.getMonth() + 1);
+              } else {
+                trialEndDate.setFullYear(trialEndDate.getFullYear() + 1);
+              }
+            }
+            
+            // Update Firestore with the new plan, cycle, trial info, and expiration date
             await updateDoc(doc(db, "users", user.uid), {
               plan: upgradedPlan,
               billing_cycle: cycle,
-              subscription_end_date: endDate,
+              subscription_end_date: trialEndDate,
+              trial_active: trialData ? true : false,
+              trial_days: trialData ? 7 : null,
               updatedAt: new Date(),
             });
             
             setUserPlan(upgradedPlan);
             setUserBillingCycle(cycle);
-            setSubscriptionEndDate(endDate);
-            console.log(`✅ Plan updated to: ${upgradedPlan} (${cycle}, expires: ${endDate.toLocaleDateString()})`);
+            setSubscriptionEndDate(trialEndDate);
+            console.log(`✅ Plan updated to: ${upgradedPlan} (${cycle}, expires: ${trialEndDate.toLocaleDateString()})`);
           }
           
           setSuccessMessage("✅ Payment successful! Plan activated!");
@@ -172,10 +191,12 @@ const BillingPlan = () => {
   const plans = [
     {
       id: "free",
-      name: "Free",
+      name: "Free Trial",
       monthlyPrice: 0,
       yearlyPrice: 0,
-      description: "Try Nayance risk-free",
+      description: "2 weeks free trial, then $15.99/month",
+      trialDays: 14,
+      trialText: "14-day free trial",
       features: [
         "✓ Basic product & inventory tracking",
         "✓ Manual sales logging",
@@ -186,19 +207,22 @@ const BillingPlan = () => {
         "✓ Manual product addition",
         "✓ Daily sales tracking",
       ],
-      button: "Current Plan",
-      buttonClass: "disabled",
+      button: "Start Free Trial",
+      buttonClass: "primary",
       priceIdMonthly: "",
       priceIdYearly: "",
+      upgradesTo: "starter",
     },
     {
       id: "growth",
-      name: "Starter",
-      monthlyPrice: 15.99,
-      yearlyPrice: 159.99,
-      description: "For growing businesses",
+      name: "Growth",
+      monthlyPrice: 19.99,
+      yearlyPrice: 199.99,
+      description: "1 week free trial, then auto-subscribe",
+      trialDays: 7,
+      trialText: "7-day free trial",
       features: [
-        "✓ Everything in Free",
+        "✓ Everything in Free Trial",
         "✓ Full inventory management",
         "✓ Automatic tax calculations",
         "✓ Detailed sales dashboards",
@@ -210,20 +234,23 @@ const BillingPlan = () => {
         "✓ Customer order tracking",
         "✓ Sales performance insights",
       ],
-      button: "Upgrade to Starter",
+      button: "Start Free Trial",
       buttonClass: "primary",
       isPopular: true,
       priceIdMonthly: "price_1T5KFWHVEVbQywP8b5tfaSHy",
       priceIdYearly: "price_1T5KGDHVEVbQywP8ccO6ku7r",
+      autoSubscribe: true,
     },
     {
       id: "pro",
       name: "Pro",
-      monthlyPrice: 19.99,
-      yearlyPrice: 199.99,
-      description: "Advanced tools & integrations",
+      monthlyPrice: 25.99,
+      yearlyPrice: 259.99,
+      description: "1 week free trial, then auto-subscribe",
+      trialDays: 7,
+      trialText: "7-day free trial",
       features: [
-        "✓ Everything in Starter",
+        "✓ Everything in Growth",
         "✓ Shopify integration",
         "✓ AI-powered sales insights",
         "✓ Advanced filtering dashboards",
@@ -236,15 +263,15 @@ const BillingPlan = () => {
         "✓ Data tracking & analysis",
         "✓ Advanced reports & export",
       ],
-      button: "Upgrade to Pro",
+      button: "Start Free Trial",
       buttonClass: "secondary",
       priceIdMonthly: "price_1T5KGqHVEVbQywP8TI8qobph",
       priceIdYearly: "price_1T5KHPHVEVbQywP8GfJBPmiw",
+      autoSubscribe: true,
     },
   ];
 
   const handleUpgrade = async (plan: typeof plans[0]) => {
-    if (plan.id === "free") return;
     if (!user?.uid) {
       alert("Please log in first");
       return;
@@ -253,6 +280,29 @@ const BillingPlan = () => {
     setLoading(true);
 
     try {
+      // Handle free trial for Free Trial plan
+      if (plan.id === "free") {
+        // Update to growth plan with 14-day trial
+        const trialEndDate = new Date();
+        trialEndDate.setDate(trialEndDate.getDate() + 14);
+        
+        await updateDoc(doc(db, "users", user.uid), {
+          plan: "growth",
+          billing_cycle: "monthly",
+          subscription_end_date: trialEndDate,
+          trial_active: true,
+          trial_days: 14,
+          updatedAt: new Date(),
+        });
+        
+        setUserPlan("growth");
+        setUserBillingCycle("monthly");
+        setSubscriptionEndDate(trialEndDate);
+        setSuccessMessage("✅ Free trial started! You have 14 days to experience Growth features.");
+        setTimeout(() => setSuccessMessage(""), 4000);
+        return;
+      }
+
       // Use real Stripe integration
       const priceId = billingCycle === "monthly" ? plan.priceIdMonthly : plan.priceIdYearly;
       
@@ -298,6 +348,23 @@ const BillingPlan = () => {
 
       if (!data.sessionUrl) {
         throw new Error("No session URL returned");
+      }
+
+      // For plans with autoSubscribe (Growth, Pro), set up trial period
+      if (plan.autoSubscribe) {
+        const trialEndDate = new Date();
+        trialEndDate.setDate(trialEndDate.getDate() + plan.trialDays);
+        
+        // Store trial info before redirecting to Stripe
+        localStorage.setItem(
+          `trial_pending_${user.uid}`,
+          JSON.stringify({
+            plan: plan.id,
+            trialDays: plan.trialDays,
+            trialEndDate: trialEndDate.toISOString(),
+            billingCycle: billingCycle,
+          })
+        );
       }
 
       console.log(`✅ Redirecting to Stripe checkout...`);
