@@ -43,12 +43,15 @@ export default function TaxCenter() {
   const currentRole = roleContext?.currentRole || "user";
   const location = useLocation();
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [isBusinessRegistered, setIsBusinessRegistered] = useState(false);
 
   // Load user profile for location
   useEffect(() => {
     const storedProfile = localStorage.getItem("userProfile");
     if (storedProfile) {
-      setUserProfile(JSON.parse(storedProfile));
+      const profileData = JSON.parse(storedProfile);
+      setUserProfile(profileData);
+      setIsBusinessRegistered(profileData.isRegistered || false);
     }
   }, []);
 
@@ -240,7 +243,21 @@ export default function TaxCenter() {
         />
 
         <div className="scrollable-content">
-      {!isShopifyConnected() && (
+      {!isBusinessRegistered && (
+        <div className="tax-notice">
+          <div className="notice-content">
+            <Sparkles size={24} className="notice-icon" />
+            <div>
+              <h3>Do You Charge Taxes on Your Products?</h3>
+              <p>We noticed your business is not marked as registered. If your business is registered and you charge taxes, please update this in your Settings. Once registered, you'll see automatic tax calculations and payment schedules here.</p>
+              <Link to="/settings" className="notice-link">
+                Go to Settings →
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+      {!isShopifyConnected() && isBusinessRegistered && (
         <div className="tax-notice">
           <div className="notice-content">
             <Sparkles size={24} className="notice-icon" />
@@ -254,170 +271,174 @@ export default function TaxCenter() {
           </div>
         </div>
       )}
-      <div className="tax-header">
-        <div>
-          <h2>Tax Center</h2>
-          <p className="tax-sub">Automated tax calculation based on your region</p>
-        </div>
 
-        <div className="tax-actions">
-          <button className="btn-generate" onClick={handleGenerateTaxReport}>
-            Generate Tax Report
-          </button>
-        </div>
-      </div>
+      {isBusinessRegistered && (
+        <>
+          <div className="tax-header">
+            <div>
+              <h2>Tax Center</h2>
+              <p className="tax-sub">Automated tax calculation based on your region</p>
+            </div>
 
-      {/* Regional summary */}
-      <div className="tax-card region-card">
-        <div className="region-title">
-          <strong>Regional Tax Summary</strong>
-        </div>
-
-        <div className="region-row">
-          <div>
-            <div className="region-label">Business Location</div>
-            <div className="region-value">
-              {userProfile?.city && userProfile?.province 
-                ? `${userProfile.city}, ${userProfile.province}` 
-                : "Toronto, Ontario"}
+            <div className="tax-actions">
+              <button className="btn-generate" onClick={handleGenerateTaxReport}>
+                Generate Tax Report
+              </button>
             </div>
           </div>
 
-          <div className="auto-detected">Auto-Detected</div>
-        </div>
-
-        <div className="tax-rate-row">
-          <div className="tax-box">
-            <div className="tax-box-icon">%</div>
-            <div className="tax-box-body">
-              <div className="tax-box-title">Corporate Tax Rate</div>
-              <div className="tax-box-value">
-                <input
-                  type="number"
-                  min={0}
-                  step={0.1}
-                  value={corporateRate}
-                  onChange={(e) => setCorporateRate(Number(e.target.value))}
-                />
-                <span className="percent">%</span>
-              </div>
-              <div className="muted">Applied to net income before tax</div>
+          <div className="tax-card region-card">
+            <div className="region-title">
+              <strong>Regional Tax Summary</strong>
             </div>
-          </div>
 
-          <div className="tax-box">
-            <div className="tax-box-icon">$</div>
-            <div className="tax-box-body">
-              <div className="tax-box-title">Sales Tax (HST)</div>
-              <div className="tax-box-value">
-                <input
-                  type="number"
-                  min={0}
-                  step={0.1}
-                  value={salesTaxRate}
-                  onChange={(e) => setSalesTaxRate(Number(e.target.value))}
-                />
-                <span className="percent">%</span>
-              </div>
-              <div className="muted">Applied to customer purchases</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="auto-tax-note">
-          <strong>Automatic Tax Adjustment</strong>
-          <div className="muted">
-            Nayance automatically adjusts tax rates based on your business location. Tax rates are updated quarterly to reflect current regulations.
-          </div>
-        </div>
-      </div>
-
-      {/* Totals */}
-      <div className="tax-grid">
-        <div className="tax-card total-card">
-          <div className="card-title">Total Tax Owed (Annual)</div>
-
-          <div className="fr-line">
-            <div className="fr-left">Net Income Before Tax</div>
-            <div className="fr-right">{isShopifyConnected() ? fmt(netIncomeBeforeTax) : "$0"}</div>
-          </div>
-
-          <div className="fr-line">
-            <div className="fr-left">Tax Rate</div>
-            <div className="fr-right">{corporateRate}%</div>
-          </div>
-
-          <div className="section-divider" />
-
-          <div className="fr-line total">
-            <div className="fr-left">Total Tax</div>
-            <div className="fr-right positive tax-total">{isShopifyConnected() ? fmt(totalTax) : "$0"}</div>
-          </div>
-
-          <div className="muted small">
-            {isShopifyConnected() ? "Based on current year-to-date income" : "Connect Shopify to see tax data"}
-          </div>
-        </div>
-      </div>
-
-      {/* Upcoming Tax Deadlines */}
-      {isShopifyConnected() && (
-        <div className="tax-card deadlines-card">
-          <div className="card-title">Upcoming Tax Deadlines</div>
-          <div className="deadlines-list">
-            {/**
-              * Dynamic deadline calculation based on current quarter
-              * For now, showing placeholder - can be enhanced with custom deadline configuration
-              */}
-            {quarters.map((q) => {
-              const dueDate = new Date(new Date().getFullYear(), (q.quarterIndex + 1) * 3, 15);
-              const today = new Date();
-              const daysUntil = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-              const status = daysUntil <= 0 ? "red" : daysUntil <= 14 ? "gold" : "blue";
-
-              return (
-                <div key={q.quarterIndex} className="deadline-item">
-                  <div className={`deadline-icon ${status}`}>
-                    <Calendar size={20} />
-                  </div>
-                  <div className="deadline-info">
-                    <div className="deadline-title">{q.label} Tax Payment</div>
-                    <div className="deadline-date">{dueDate.toLocaleDateString()}</div>
-                  </div>
-                  <div className={`deadline-badge ${status}`}>
-                    {daysUntil <= 0 ? "Overdue" : `${Math.max(daysUntil, 0)} days`}
-                  </div>
+            <div className="region-row">
+              <div>
+                <div className="region-label">Business Location</div>
+                <div className="region-value">
+                  {userProfile?.city && userProfile?.province 
+                    ? `${userProfile.city}, ${userProfile.province}` 
+                    : "Toronto, Ontario"}
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+              </div>
 
-      {/* Export Tax Documents */}
-      {isShopifyConnected() && (
-        <div className="tax-card export-card">
-          <div className="card-title">Export Tax Documents</div>
-          <div className="export-buttons">
-            <button className="export-btn" onClick={handleDownloadTaxSummary}>
-              <Download size={16} />
-              Download Tax Summary (PDF)
-            </button>
-            <button className="export-btn" onClick={handleGenerateQuarterlyReport}>
-              <FileText size={16} />
-              Generate Quarterly Report
-            </button>
-            <button className="export-btn" onClick={handleViewPaymentHistory}>
-              <DollarSign size={16} />
-              View Payment History
-            </button>
+              <div className="auto-detected">Auto-Detected</div>
+            </div>
+
+            <div className="tax-rate-row">
+              <div className="tax-box">
+                <div className="tax-box-icon">%</div>
+                <div className="tax-box-body">
+                  <div className="tax-box-title">Corporate Tax Rate</div>
+                  <div className="tax-box-value">
+                    <input
+                      type="number"
+                      min={0}
+                      step={0.1}
+                      value={corporateRate}
+                      onChange={(e) => setCorporateRate(Number(e.target.value))}
+                    />
+                    <span className="percent">%</span>
+                  </div>
+                  <div className="muted">Applied to net income before tax</div>
+                </div>
+              </div>
+
+              <div className="tax-box">
+                <div className="tax-box-icon">$</div>
+                <div className="tax-box-body">
+                  <div className="tax-box-title">Sales Tax (HST)</div>
+                  <div className="tax-box-value">
+                    <input
+                      type="number"
+                      min={0}
+                      step={0.1}
+                      value={salesTaxRate}
+                      onChange={(e) => setSalesTaxRate(Number(e.target.value))}
+                    />
+                    <span className="percent">%</span>
+                  </div>
+                  <div className="muted">Applied to customer purchases</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="auto-tax-note">
+              <strong>Automatic Tax Adjustment</strong>
+              <div className="muted">
+                Nayance automatically adjusts tax rates based on your business location. Tax rates are updated quarterly to reflect current regulations.
+              </div>
+            </div>
           </div>
-        </div>
+
+          {/* Totals */}
+          <div className="tax-grid">
+            <div className="tax-card total-card">
+              <div className="card-title">Total Tax Owed (Annual)</div>
+
+              <div className="fr-line">
+                <div className="fr-left">Net Income Before Tax</div>
+                <div className="fr-right">{isShopifyConnected() ? fmt(netIncomeBeforeTax) : "$0"}</div>
+              </div>
+
+              <div className="fr-line">
+                <div className="fr-left">Tax Rate</div>
+                <div className="fr-right">{corporateRate}%</div>
+              </div>
+
+              <div className="section-divider" />
+
+              <div className="fr-line total">
+                <div className="fr-left">Total Tax</div>
+                <div className="fr-right positive tax-total">{isShopifyConnected() ? fmt(totalTax) : "$0"}</div>
+              </div>
+
+              <div className="muted small">
+                {isShopifyConnected() ? "Based on current year-to-date income" : "Connect Shopify to see tax data"}
+              </div>
+            </div>
+          </div>
+
+          {/* Upcoming Tax Deadlines */}
+          {isShopifyConnected() && (
+            <div className="tax-card deadlines-card">
+              <div className="card-title">Upcoming Tax Deadlines</div>
+              <div className="deadlines-list">
+                {/**
+                  * Dynamic deadline calculation based on current quarter
+                  * For now, showing placeholder - can be enhanced with custom deadline configuration
+                  */}
+                {quarters.map((q) => {
+                  const dueDate = new Date(new Date().getFullYear(), (q.quarterIndex + 1) * 3, 15);
+                  const today = new Date();
+                  const daysUntil = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                  const status = daysUntil <= 0 ? "red" : daysUntil <= 14 ? "gold" : "blue";
+
+                  return (
+                    <div key={q.quarterIndex} className="deadline-item">
+                      <div className={`deadline-icon ${status}`}>
+                        <Calendar size={20} />
+                      </div>
+                      <div className="deadline-info">
+                        <div className="deadline-title">{q.label} Tax Payment</div>
+                        <div className="deadline-date">{dueDate.toLocaleDateString()}</div>
+                      </div>
+                      <div className={`deadline-badge ${status}`}>
+                        {daysUntil <= 0 ? "Overdue" : `${Math.max(daysUntil, 0)} days`}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Export Tax Documents */}
+          {isShopifyConnected() && (
+            <div className="tax-card export-card">
+              <div className="card-title">Export Tax Documents</div>
+              <div className="export-buttons">
+                <button className="export-btn" onClick={handleDownloadTaxSummary}>
+                  <Download size={16} />
+                  Download Tax Summary (PDF)
+                </button>
+                <button className="export-btn" onClick={handleGenerateQuarterlyReport}>
+                  <FileText size={16} />
+                  Generate Quarterly Report
+                </button>
+                <button className="export-btn" onClick={handleViewPaymentHistory}>
+                  <DollarSign size={16} />
+                  View Payment History
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* small footer + controls */}
       <div className="tax-footer muted small">
-        Tip: Update corporate & sales tax rates here. For full compliance, consult a tax professional.
+        {isBusinessRegistered ? "Tip: Update corporate & sales tax rates here. For full compliance, consult a tax professional." : "Register your business in Settings to start tracking taxes."}
       </div>
         </div>
       </main>

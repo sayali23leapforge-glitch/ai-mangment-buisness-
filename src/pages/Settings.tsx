@@ -18,6 +18,7 @@ interface UserProfile {
   country?: string;
   province?: string;
   city?: string;
+  isRegistered?: boolean;
 }
 
 const Settings: React.FC = () => {
@@ -30,6 +31,7 @@ const Settings: React.FC = () => {
     businessName: "",
     industry: "",
     taxId: "",
+    isRegistered: false,
   });
 
   // Toggle states
@@ -76,6 +78,7 @@ const Settings: React.FC = () => {
           businessName: "",
           industry: "",
           taxId: "",
+          isRegistered: false,
         });
       }
     } else {
@@ -88,6 +91,7 @@ const Settings: React.FC = () => {
         businessName: "",
         industry: "",
         taxId: "",
+        isRegistered: false,
       });
     }
 
@@ -129,7 +133,9 @@ const Settings: React.FC = () => {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setProfile({ ...profile, [e.target.name]: e.target.value });
+    const { name, value, type, checked } = e.target;
+    const fieldValue = type === 'checkbox' ? checked : value;
+    setProfile({ ...profile, [name]: fieldValue });
   };
 
   // Toggle handler with feedback
@@ -411,6 +417,22 @@ const Settings: React.FC = () => {
               onChange={handleChange}
             />
           </div>
+        </div>
+
+        <div className="settings-option">
+          <div className="option-content">
+            <h4>Registered Business</h4>
+            <p>Check this box if your business is registered and pays taxes</p>
+          </div>
+          <label className="toggle">
+            <input
+              type="checkbox"
+              name="isRegistered"
+              checked={profile.isRegistered || false}
+              onChange={handleChange}
+            />
+            <span className="slider"></span>
+          </label>
         </div>
       </div>
 
