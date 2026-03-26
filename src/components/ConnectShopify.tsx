@@ -6,6 +6,7 @@
 import { useState } from "react";
 import { AlertCircle, Loader } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { getApiUrl } from "../config/api";
 import "../styles/ConnectShopify.css";
 
 interface ConnectShopifyProps {
@@ -14,9 +15,12 @@ interface ConnectShopifyProps {
   onSuccess?: () => void;
 }
 
-const BACKEND = window.location.hostname === "localhost"
-  ? "http://localhost:3001"
-  : window.location.origin;
+// Construct backend URL - use API config or environment variable
+const BACKEND =
+  import.meta.env.VITE_API_URL ||
+  (window.location.hostname === "localhost"
+    ? "http://localhost:3001"
+    : `https://${window.location.hostname.replace("nayance.com", "nayance-backend.onrender.com")}`);
 
 export default function ConnectShopify({
   isOpen,

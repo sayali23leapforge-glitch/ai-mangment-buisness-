@@ -16,6 +16,7 @@ import { formatLastSyncTime } from "../utils/shopifySync";
 import { syncAllQuickBooksData } from "../utils/quickbooksSync";
 import { fetchShopifyStatus, syncShopifyToLocalStorageWithAuth } from "../utils/shopifyDataFetcher";
 import { syncShopifyFinancialData } from "../utils/shopifyFinancialSync";
+import { getApiUrl } from "../config/api";
 import "../styles/Dashboard.css";
 import "../styles/Integrations.css";
 
@@ -110,7 +111,7 @@ const Integrations = () => {
     }
 
     // Verify integrations access is allowed
-    fetch("http://localhost:3001/api/integrations/access")
+    fetch(getApiUrl("/api/integrations/access"))
       .catch(() => {
         // Endpoint not available, but that's ok
         console.log("✅ Integrations access verified");
@@ -332,7 +333,7 @@ const Integrations = () => {
       console.log("🔄 Starting Square connection...");
       
       // Call backend endpoint to connect to Square
-      const response = await fetch("http://localhost:3001/square/connect", {
+      const response = await fetch(getApiUrl("/square/connect"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -422,7 +423,7 @@ const Integrations = () => {
     try {
       console.log("🔄 Starting Square sync...");
       
-      const response = await fetch("http://localhost:3001/square/sync", {
+      const response = await fetch(getApiUrl("/square/sync"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
