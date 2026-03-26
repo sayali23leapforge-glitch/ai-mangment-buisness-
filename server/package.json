@@ -5,7 +5,11 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "square:dev": "ts-node src/server.ts",
+    "square:build": "tsc",
+    "square:start": "node dist/server.js",
+    "square:watch": "nodemon --exec ts-node src/server.ts"
   },
   "keywords": [
     "stripe",
@@ -24,6 +28,12 @@
     "stripe": "^14.0.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.1"
+    "@types/axios": "^0.14.0",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^4.17.17",
+    "@types/node": "^20.0.0",
+    "nodemon": "^3.0.1",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.2.2"
   }
 }

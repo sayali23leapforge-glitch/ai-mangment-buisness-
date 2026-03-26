@@ -86,10 +86,13 @@ const Integrations = () => {
   const [shopifyData, setShopifyData] = useState<{ shopName: string; lastSync: string } | null>(null);
   const [quickbooksConnected, setQuickbooksConnected] = useState(false);
   const [quickbooksData, setQuickbooksData] = useState<{ realmId: string; lastSync: string } | null>(null);
+  const [squareConnected, setSquareConnected] = useState(false);
+  const [squareData, setSquareData] = useState<{ payments: number; orders: number; lastSync: string } | null>(null);
   const [showConnectModal, setShowConnectModal] = useState(false);
   const [showConnectQBModal, setShowConnectQBModal] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncingQB, setSyncingQB] = useState(false);
+  const [syncingSquare, setSyncingSquare] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [integrations, setIntegrations] = useState(integrationsList);
 
@@ -319,6 +322,144 @@ const Integrations = () => {
       });
     } finally {
       setSyncingQB(false);
+    }
+  };
+
+  const handleConnectSquare = async () => {
+    if (!user?.uid) return;
+    setSyncingSquare(true);
+    try {
+      console.log("🔄 Starting Square connection...");
+      
+      // Call backend endpoint to connect to Square
+      const response = await fetch("http://localhost:3001/square/connect", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to connect to Square");
+      }
+
+      const data = await response.json();
+      console.log("✅ Square connection response:", data);
+
+      if (data.status === "success" && data.data) {
+        // Store connection status
+        localStorage.setItem("squareConnected", JSON.stringify(true));
+        localStorage.setItem("squareData", JSON.stringify(data.data));
+
+        setSquareConnected(true);
+        setSquareData({
+          payments: data.data.total_payments_synced || 0,
+          orders: data.data.total_orders_synced || 0,
+          lastSync: new Date().toLocaleTimeString(),
+        });
+
+        setIntegrations((prev) =>
+          prev.map((item) =>
+            item.id === "square"
+              ? {
+                  ...item,
+                  connected: true,
+                  lastSync: new Date().toLocaleTimeString(),
+                }
+              : item
+          )
+        );
+
+        syncHistory.unshift({
+          app: "Square",
+          action: `✅ Connected - ${data.data.total_payments_synced || 0} payments, ${data.data.total_orders_synced || 0} orders`,
+          status: "Success",
+          time: "just now",
+        });
+
+        alert(`✅ Connected to Square! Synced ${data.data.total_payments_synced || 0} payments and ${data.data.total_orders_synced || 0} orders`);
+      }
+    } catch (error) {
+      console.error("❌ Square connection failed:", error);
+      alert("Failed to connect to Square. Please check the console for details.");
+      syncHistory.unshift({
+        app: "Square",
+        action: "❌ Connection failed",
+        status: "Failed",
+        time: "just now",
+      });
+    } finally {
+      setSyncingSquare(false);
+    }
+  };
+
+  const handleDisconnectSquare = async () => {
+    if (confirm("Are you sure you want to disconnect Square?")) {
+      try {
+        setSquareConnected(false);
+        setSquareData(null);
+        
+        // Clear localStorage Square data
+        localStorage.removeItem("squareConnected");
+        localStorage.removeItem("squareData");
+        
+        setIntegrations((prev) =>
+          prev.map((item) =>
+            item.id === "square"
+              ? { ...item, connected: false, lastSync: "" }
+              : item
+          )
+        );
+      } catch (error) {
+        console.error("Disconnect failed:", error);
+      }
+    }
+  };
+
+  const handleSyncSquare = async () => {
+    if (!user?.uid) return;
+    setSyncingSquare(true);
+    try {
+      console.log("🔄 Starting Square sync...");
+      
+      const response = await fetch("http://localhost:3001/square/sync", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to sync Square data");
+      }
+
+      const data = await response.json();
+      console.log("✅ Square sync response:", data);
+
+      if (data.status === "success") {
+        setSquareData({
+          payments: data.data?.total_payments_synced || 0,
+          orders: data.data?.total_orders_synced || 0,
+          lastSync: new Date().toLocaleTimeString(),
+        });
+
+        syncHistory.unshift({
+          app: "Square",
+          action: `✅ Synced - ${data.data?.total_payments_synced || 0} payments, ${data.data?.total_orders_synced || 0} orders`,
+          status: "Success",
+          time: "just now",
+        });
+      }
+    } catch (error) {
+      console.error("❌ Square sync failed:", error);
+      syncHistory.unshift({
+        app: "Square",
+        action: "❌ Sync failed",
+        status: "Failed",
+        time: "just now",
+      });
+    } finally {
+      setSyncingSquare(false);
     }
   };
 
@@ -677,6 +818,91 @@ const Integrations = () => {
                             onClick={() => setShowConnectQBModal(true)}
                           >
                             Connect
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  );
+                }
+
+                // Special handling for Square card
+                if (integration.id === "square") {
+                  return (
+                    <div
+                      key={integration.id}
+                      className={`integration-card ${
+                        squareConnected ? "connected" : ""
+                      }`}
+                    >
+                      <div className="card-icon">
+                        <IconComponent size={32} />
+                      </div>
+                      <div className="card-header">
+                        <h3>{integration.name}</h3>
+                        {squareConnected && (
+                          <span className="connected-badge">Connected</span>
+                        )}
+                      </div>
+                      <p className="card-description">
+                        {integration.description}
+                      </p>
+                      {squareConnected && squareData && (
+                        <>
+                          <div className="card-square-info">
+                            <div className="square-payments-orders">
+                              <div>
+                                <strong>Payments:</strong> {squareData.payments}
+                              </div>
+                              <div>
+                                <strong>Orders:</strong> {squareData.orders}
+                              </div>
+                            </div>
+                            <div className="card-sync-info">
+                              Last sync: {squareData.lastSync}
+                            </div>
+                          </div>
+                          <div className="card-square-actions">
+                            <button
+                              className="card-btn sync-btn"
+                              onClick={handleSyncSquare}
+                              disabled={syncingSquare}
+                            >
+                              <RefreshCw
+                                size={14}
+                                className={syncingSquare ? "spinning" : ""}
+                              />
+                              {syncingSquare ? "Syncing..." : "Re-sync"}
+                            </button>
+                            <button
+                              className="card-btn disconnect-btn"
+                              onClick={handleDisconnectSquare}
+                            >
+                              <Trash2 size={14} />
+                              Disconnect
+                            </button>
+                          </div>
+                        </>
+                      )}
+                      {!squareConnected && (
+                        <>
+                          {integration.features && integration.features.length > 0 && (
+                            <div className="card-features">
+                              <div className="card-features-label">
+                                Features:
+                              </div>
+                              <ul>
+                                {integration.features.map((feature, idx) => (
+                                  <li key={idx}>{feature}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          <button
+                            className="card-btn connect"
+                            onClick={handleConnectSquare}
+                            disabled={syncingSquare}
+                          >
+                            {syncingSquare ? "Connecting..." : "Connect"}
                           </button>
                         </>
                       )}
