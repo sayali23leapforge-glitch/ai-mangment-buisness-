@@ -15,6 +15,7 @@ dotenv.config();
 
 import express, { Express, Request, Response, NextFunction } from 'express';
 import cors, { CorsOptions } from 'cors';
+import path from 'path';
 import { logger, LogLevel } from './utils/logger';
 import { squareService } from './services/squareService';
 import squareRoutes from './routes/squareRoutes';
@@ -104,6 +105,22 @@ app.use('/integrations', integrationRoutes);
  * Base: /webhook
  */
 app.use('/webhook', webhookRoutes);
+
+// ============ STATIC FILE SERVING ============
+// Serve frontend static files from dist/ folder
+const frontendDistPath = path.join(__dirname, '../../dist');
+app.use(express.static(frontendDistPath));
+
+// SPA routing: Serve index.html for all non-API routes
+app.get('*', (req: Request, res: Response) => {
+  // Don't serve index.html for API routes
+  if (req.path.startsWith('/api') || req.path.startsWith('/square') || req.path.startsWith('/webhook') || req.path.startsWith('/integrations')) {
+    res.status(404).json({ status: 'error', message: `Endpoint not found: ${req.method} ${req.path}` });
+    return;
+  }
+  // Serve index.html for all other routes (SPA)
+  res.sendFile(path.join(frontendDistPath, 'index.html'));
+});
 
 // ============ EXISTING SERVER ROUTES ============
 // Note: The existing Express server (index.js) already has:
