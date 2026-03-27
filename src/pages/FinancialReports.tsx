@@ -27,18 +27,78 @@ interface Sale {
   productId?: string;
 }
 
+// Check if Square is connected
+function isSquareConnected(): boolean {
+  try {
+    const squareData = localStorage.getItem("squareConnected");
+    return squareData === "true";
+  } catch {
+    return false;
+  }
+}
+
+// Get Square payments data
+function getSquarePaymentsFromStorage(): any[] {
+  try {
+    const data = localStorage.getItem("squarePayments");
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+}
+
+// Get Square orders data
+function getSquareOrdersFromStorage(): any[] {
+  try {
+    const data = localStorage.getItem("squareOrders");
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+}
+
+// Convert Square data to Sales format for compatibility
+function getSquareSalesFromStorage(): Sale[] {
+  try {
+    const orders = getSquareOrdersFromStorage();
+    if (!Array.isArray(orders) || orders.length === 0) return [];
+
+    return orders.map((order: any) => ({
+      id: order.id || order.order_id || "",
+      productName: order.location_name || "Square Order",
+      amount: order.total_money?.amount ? order.total_money.amount / 100 : 0,
+      timestamp: order.created_at || new Date().toISOString(),
+      quantity: order.line_items ? order.line_items.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0) : 1,
+      items: order.line_items || [],
+      price: order.total_money?.amount ? order.total_money.amount / 100 : 0,
+    }));
+  } catch (err) {
+    console.warn("Error converting Square data:", err);
+    return [];
+  }
+}
+
 function fmt(n: number) {
   return n.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 }
 
-// Read sales from localStorage - support both manual sales AND Shopify data
-function readSales(): any[] {
+// Read sales from localStorage - support both manual sales, Shopify AND Square data
+function readSales(dataSource: "shopify" | "square" | "manual"): any[] {
   try {
-    // If Shopify is connected, try to use Shopify data first
-    if (isShopifyConnected()) {
+    // If Square is selected and connected
+    if (dataSource === "square" && isSquareConnected()) {
+      const squareSales = getSquareSalesFromStorage();
+      if (squareSales && squareSales.length > 0) {
+        console.log("✅ Using Square sales via Square:", squareSales.length);
+        return squareSales;
+      }
+    }
+
+    // If Shopify is selected and connected
+    if (dataSource === "shopify" && isShopifyConnected()) {
       const shopifySales = getShopifySalesFromStorage();
       if (shopifySales && shopifySales.length > 0) {
-        console.log("✅ Using Shopify sales:", shopifySales.length);
+        console.log("✅ Using Shopify sales via Shopify:", shopifySales.length);
         return shopifySales.map((sale: any) => ({
           ...sale,
           items: sale.lineItems || [{ productId: sale.productId, quantity: sale.quantity, price: sale.amount }]
@@ -159,6 +219,7 @@ export default function FinancialReports() {
   const [expenses, setExpenses] = useState<ExpenseLine[]>(() => readOperatingExpenses());
   const [productCostExpenses, setProductCostExpenses] = useState<number>(() => readProductCostExpenses());
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [dataSource, setDataSource] = useState<"shopify" | "square">("shopify"); // Toggle between Shopify and Square data
   const [taxRate] = useState<number>(() => {
     const t = localStorage.getItem("taxRate");
     return t ? Number(t) : 15;
@@ -225,11 +286,12 @@ export default function FinancialReports() {
     setDataRefresh(prev => prev + 1);
   }, []);
 
-  // Listen for Shopify connection/disconnection AND manual sales changes
+  // Listen for Shopify connection/disconnection AND manual sales changes AND Square changes
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "shopifyConnected" || e.key === "shopifyProducts" || e.key === "shopifySales" || 
-          e.key === "sales" || e.key === "businessExpenses") {
+          e.key === "sales" || e.key === "businessExpenses" || 
+          e.key === "squareConnected" || e.key === "squarePayments" || e.key === "squareOrders") {
         console.log("🔄 Data changed:", e.key, "- Refreshing calculations");
         setExpenses(readOperatingExpenses());
         setProductCostExpenses(readProductCostExpenses());
@@ -264,9 +326,9 @@ export default function FinancialReports() {
   // State for monthly data
   const [monthlyData, setMonthlyData] = useState<any[]>([]);
 
-  // data sources - use Shopify if connected, otherwise local
+  // data sources - use selected source (Shopify, Square, or manual)
   const products: Product[] = isShopifyConnected() ? getShopifyProductsFromStorage() : getProducts();
-  const sales: Sale[] = readSales();
+  const sales: Sale[] = readSales(dataSource);
   const operatingExpenses = expenses;
 
   // Generate monthly data for charts
@@ -577,7 +639,7 @@ export default function FinancialReports() {
         />
 
         <div className="scrollable-content">
-      {!isShopifyConnected() && (
+      {!isShopifyConnected() && !isSquareConnected() && (
         <div style={{
           background: "linear-gradient(135deg, #d4af37 0%, #f4d03f 100%)",
           border: "1px solid #b8860b",
@@ -591,10 +653,10 @@ export default function FinancialReports() {
           <AlertCircle size={24} style={{ color: "#333", flexShrink: 0, marginTop: "2px" }} />
           <div style={{ flex: 1 }}>
             <h3 style={{ color: "#333", margin: "0 0 8px 0", fontSize: "16px", fontWeight: "600" }}>
-              Connect Shopify to View Real Financial Data
+              Connect Shopify or Square to View Real Financial Data
             </h3>
             <p style={{ color: "#333", margin: "0 0 12px 0", fontSize: "14px" }}>
-              To see accurate financial reports generated from your actual sales, connect your Shopify store. Once connected, all revenue, expenses, and profit calculations will be based on real data from your business.
+              To see accurate financial reports generated from your actual sales, connect your Shopify store or Square POS. Once connected, all revenue, expenses, and profit calculations will be based on real data from your business.
             </p>
             <Link to="/integrations" style={{
               color: "#333",
@@ -618,15 +680,60 @@ export default function FinancialReports() {
           <h2>Financial Reports</h2>
           <p className="fr-sub">
             Comprehensive financial statements and analysis
-            {isShopifyConnected() && (
+            {isShopifyConnected() && dataSource === "shopify" && (
               <span style={{marginLeft: "1rem", color: "#10b981", fontWeight: "bold"}}>
                 📊 Real Shopify Data • Last sync: {lastSyncTime}
+              </span>
+            )}
+            {isSquareConnected() && dataSource === "square" && (
+              <span style={{marginLeft: "1rem", color: "#3b82f6", fontWeight: "bold"}}>
+                🎯 via Square POS
               </span>
             )}
           </p>
         </div>
 
         <div className="fr-actions">
+          {/* Data Source Toggle - Only show if both are connected */}
+          {isShopifyConnected() && isSquareConnected() && (
+            <div style={{ display: "flex", gap: "8px", alignItems: "center", marginRight: "12px" }}>
+              <label style={{ fontWeight: "600", fontSize: "14px" }}>Data Source:</label>
+              <button
+                onClick={() => setDataSource("shopify")}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: "4px",
+                  border: dataSource === "shopify" ? "2px solid #10b981" : "1px solid #ddd",
+                  background: dataSource === "shopify" ? "#10b98120" : "#fff",
+                  cursor: "pointer",
+                  fontWeight: dataSource === "shopify" ? "600" : "400",
+                  fontSize: "13px",
+                }}
+              >
+                📊 Shopify
+              </button>
+              <button
+                onClick={() => setDataSource("square")}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: "4px",
+                  border: dataSource === "square" ? "2px solid #3b82f6" : "1px solid #ddd",
+                  background: dataSource === "square" ? "#3b82f620" : "#fff",
+                  cursor: "pointer",
+                  fontWeight: dataSource === "square" ? "600" : "400",
+                  fontSize: "13px",
+                }}
+              >
+                🎯 Square
+              </button>
+            </div>
+          )}
+          {/* Show Square warning if only Square is connected */}
+          {isSquareConnected() && !isShopifyConnected() && (
+            <div style={{ marginRight: "12px", fontSize: "12px", fontWeight: "600", color: "#3b82f6" }}>
+              🎯 via Square POS
+            </div>
+          )}
           {isShopifyConnected() && (
             <button 
               className="btn-generate" 
