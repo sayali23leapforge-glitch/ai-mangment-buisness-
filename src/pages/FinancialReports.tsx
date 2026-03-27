@@ -85,39 +85,37 @@ function fmt(n: number) {
 // Read sales from localStorage - support both manual sales, Shopify AND Square data
 function readSales(dataSource: "shopify" | "square" | "manual"): any[] {
   try {
-    // If Square is selected and connected
-    if (dataSource === "square" && isSquareConnected()) {
-      const squareSales = getSquareSalesFromStorage();
-      if (squareSales && squareSales.length > 0) {
-        console.log("✅ Using Square sales via Square:", squareSales.length);
-        return squareSales;
+    // If Square is selected - ONLY show Square data (don't fallback)
+    if (dataSource === "square") {
+      if (isSquareConnected()) {
+        const squareSales = getSquareSalesFromStorage();
+        console.log("✅ Square tab selected - Square data found:", squareSales.length);
+        return squareSales || [];  // Return Square data (empty array if no data)
+      } else {
+        console.log("⚠️ Square tab selected but Square NOT connected - showing empty");
+        return [];  // Square not connected = show nothing
       }
     }
 
-    // If Shopify is selected and connected
-    if (dataSource === "shopify" && isShopifyConnected()) {
-      const shopifySales = getShopifySalesFromStorage();
-      if (shopifySales && shopifySales.length > 0) {
-        console.log("✅ Using Shopify sales via Shopify:", shopifySales.length);
-        return shopifySales.map((sale: any) => ({
+    // If Shopify is selected - ONLY show Shopify data (don't fallback)
+    if (dataSource === "shopify") {
+      if (isShopifyConnected()) {
+        const shopifySales = getShopifySalesFromStorage();
+        console.log("✅ Shopify tab selected - Shopify data found:", shopifySales?.length || 0);
+        return (shopifySales || []).map((sale: any) => ({
           ...sale,
           items: sale.lineItems || [{ productId: sale.productId, quantity: sale.quantity, price: sale.amount }]
         }));
+      } else {
+        console.log("⚠️ Shopify tab selected but Shopify NOT connected - showing empty");
+        return [];  // Shopify not connected = show nothing
       }
     }
     
-    // Read manual sales from localStorage (Record Sale) regardless of Shopify connection
-    const manualSales = localStorage.getItem("sales");
-    if (manualSales) {
-      const salesArray = JSON.parse(manualSales);
-      console.log("✅ Using manual sales from localStorage:", salesArray.length);
-      // Transform to match expected format with timestamp and amount
-      return salesArray.map((sale: any) => ({
-        ...sale,
-        timestamp: sale.date,
-        amount: sale.total || sale.subtotal || 0,
-        items: sale.items || [],
-        quantity: sale.items ? sale.items.reduce((sum: number, item: any) => sum + Number(item.quantity || 0), 0) : 0
+    // Default/fallback
+    console.log("⚠️ No valid data source selected");
+    return [];
+  }
       }));
     }
   } catch (err) {
