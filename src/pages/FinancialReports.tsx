@@ -115,9 +115,6 @@ function readSales(dataSource: "shopify" | "square" | "manual"): any[] {
     // Default/fallback
     console.log("⚠️ No valid data source selected");
     return [];
-  }
-      }));
-    }
   } catch (err) {
     console.error("Error reading sales:", err);
   }
