@@ -656,27 +656,6 @@ export default function Dashboard() {
               </div>
             </div>
           )}
-                  Connect Shopify for Real Financial Data
-                </h3>
-                <p style={{ color: "#333", margin: "0 0 8px 0", fontSize: "12px" }}>
-                  Currently showing estimates. Connect your Shopify store to see actual revenue, expenses, and financial metrics.
-                </p>
-                <Link to="/integrations" style={{
-                  color: "#333",
-                  textDecoration: "none",
-                  fontWeight: "600",
-                  fontSize: "12px",
-                  padding: "6px 10px",
-                  background: "rgba(0,0,0,0.1)",
-                  borderRadius: "4px",
-                  display: "inline-block",
-                  border: "1px solid rgba(0,0,0,0.2)"
-                }}>
-                  Go to Integrations →
-                </Link>
-              </div>
-            </div>
-          )}
 
           {/* Summary Cards */}
           <div className="summary-cards">
