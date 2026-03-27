@@ -696,35 +696,36 @@ export default function FinancialReports() {
         <div className="fr-actions">
           {/* Data Source Toggle - Only show if both are connected */}
           {isShopifyConnected() && isSquareConnected() && (
-            <div style={{ display: "flex", gap: "8px", alignItems: "center", marginRight: "12px" }}>
-              <label style={{ fontWeight: "600", fontSize: "14px" }}>Data Source:</label>
+            <div style={{ display: "flex", gap: "4px", alignItems: "center", marginRight: "8px" }}>
               <button
                 onClick={() => setDataSource("shopify")}
                 style={{
-                  padding: "6px 12px",
-                  borderRadius: "4px",
-                  border: dataSource === "shopify" ? "2px solid #10b981" : "1px solid #ddd",
-                  background: dataSource === "shopify" ? "#10b98120" : "#fff",
+                  padding: "4px 8px",
+                  borderRadius: "3px",
+                  border: dataSource === "shopify" ? "2px solid #10b981" : "1px solid #ccc",
+                  background: dataSource === "shopify" ? "#10b98115" : "#f5f5f5",
                   cursor: "pointer",
                   fontWeight: dataSource === "shopify" ? "600" : "400",
-                  fontSize: "13px",
+                  fontSize: "11px",
+                  transition: "all 0.1s",
                 }}
               >
-                📊 Shopify
+                Shopify
               </button>
               <button
                 onClick={() => setDataSource("square")}
                 style={{
-                  padding: "6px 12px",
-                  borderRadius: "4px",
-                  border: dataSource === "square" ? "2px solid #3b82f6" : "1px solid #ddd",
-                  background: dataSource === "square" ? "#3b82f620" : "#fff",
+                  padding: "4px 8px",
+                  borderRadius: "3px",
+                  border: dataSource === "square" ? "2px solid #3b82f6" : "1px solid #ccc",
+                  background: dataSource === "square" ? "#3b82f615" : "#f5f5f5",
                   cursor: "pointer",
                   fontWeight: dataSource === "square" ? "600" : "400",
-                  fontSize: "13px",
+                  fontSize: "11px",
+                  transition: "all 0.1s",
                 }}
               >
-                🎯 Square
+                Square
               </button>
             </div>
           )}
