@@ -47,6 +47,38 @@ interface Sale {
   quantity: number;
 }
 
+// Check if Square is connected
+function isSquareConnected(): boolean {
+  try {
+    const squareData = localStorage.getItem("squareConnected");
+    return squareData === "true";
+  } catch {
+    return false;
+  }
+}
+
+// Get Square orders as Sales
+function getSquareSalesFromStorage(): Sale[] {
+  try {
+    const orders = localStorage.getItem("squareOrders");
+    if (!orders) return [];
+    
+    const orderData = JSON.parse(orders);
+    if (!Array.isArray(orderData)) return [];
+
+    return orderData.map((order: any) => ({
+      id: order.id || order.order_id || "",
+      productName: order.location_name || "Square Order",
+      amount: order.total_money?.amount ? order.total_money.amount / 100 : 0,
+      timestamp: order.created_at || new Date().toISOString(),
+      quantity: order.line_items ? order.line_items.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0) : 1,
+    }));
+  } catch (err) {
+    console.warn("Error converting Square data:", err);
+    return [];
+  }
+}
+
 // Utility function to format currency
 function fmt(n: number) {
   return n.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
@@ -55,6 +87,7 @@ function fmt(n: number) {
 export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [_selectedRole, setSelectedRole] = useState("Owner (Full Access)");
+  const [dataSource, setDataSource] = useState<"shopify" | "square">("shopify"); // Toggle between Shopify and Square
   const { user } = useAuth();
   const { currentRole } = useRole();
   const { tier } = useSubscription();
@@ -71,7 +104,7 @@ export default function Dashboard() {
     city: ""
   });
 
-  // Load real financial data (from Shopify ONLY when connected)
+  // Load real financial data (from Shopify or Square when connected)
   useEffect(() => {
     const loadData = async () => {
       if (!user) return;
@@ -84,19 +117,32 @@ export default function Dashboard() {
           setUserProfile(JSON.parse(storedProfile));
         }
         
-        // Check if Shopify is connected
-        const shopifyConnected = localStorage.getItem("shopifyConnected") === "true";
-        const shopifyStoreUrl = localStorage.getItem("shopifyStoreUrl");
-        
-        console.log(`\n📊 DASHBOARD LOAD CHECK:`);
-        console.log(`   ✓ shopifyConnected: ${shopifyConnected}`);
-        console.log(`   ✓ shopifyStoreUrl: ${shopifyStoreUrl}`);
-        
-        if (shopifyConnected && shopifyStoreUrl) {
-          console.log(`   ✓ Shopify IS connected! Syncing data...`);
+        // If Square source is selected and connected
+        if (dataSource === "square" && isSquareConnected()) {
+          console.log(`\n🎯 DASHBOARD LOAD CHECK (Square):`);
+          console.log(`   ✓ Square IS connected! Loading data...`);
           
-          // Sync Shopify data
-          const syncResult = await syncShopifyFinancialData();
+          const squareSales = getSquareSalesFromStorage();
+          setProducts([]); // Square doesn't have product data like Shopify
+          setSales(squareSales || []);
+          
+          console.log(`   ✓ Loaded ${squareSales?.length || 0} Square sales`);
+        } 
+        // If Shopify source is selected and connected
+        else if (dataSource === "shopify" && isShopifyConnected()) {
+          console.log(`\n📊 DASHBOARD LOAD CHECK (Shopify):`);
+          
+          const shopifyConnected = localStorage.getItem("shopifyConnected") === "true";
+          const shopifyStoreUrl = localStorage.getItem("shopifyStoreUrl");
+          
+          console.log(`   ✓ shopifyConnected: ${shopifyConnected}`);
+          console.log(`   ✓ shopifyStoreUrl: ${shopifyStoreUrl}`);
+          
+          if (shopifyConnected && shopifyStoreUrl) {
+            console.log(`   ✓ Shopify IS connected! Syncing data...`);
+            
+            // Sync Shopify data
+            const syncResult = await syncShopifyFinancialData();
           
           if (syncResult.success) {
             console.log(`   ✅ Sync successful! Data ready for display`);
@@ -111,18 +157,20 @@ export default function Dashboard() {
             setProducts(shopifyProducts || []);
             setSales(shopifySales || []);
           } else {
-            console.log(`   ⚠️  Sync failed: ${syncResult.error}`);
-            // Still try to show cached data
-            const shopifyProducts = getShopifyProductsFromStorage();
-            const shopifySales = getShopifySalesFromStorage();
-            setProducts(shopifyProducts || []);
-            setSales(shopifySales || []);
+            console.log(`   ⚠️  Syncing failed or Shopify not fully connected - showing empty state`);
+            setProducts([]);
+            setSales([]);
           }
         } else {
           console.log(`   ❌ Shopify NOT connected - showing empty state`);
           setProducts([]);
           setSales([]);
         }
+      } else {
+        console.log(`   ❌ Selected source NOT connected - showing empty state`);
+        setProducts([]);
+        setSales([]);
+      }
       } catch (error) {
         console.error("❌ Error loading Dashboard data:", error);
         setProducts([]);
@@ -133,15 +181,20 @@ export default function Dashboard() {
     };
     
     loadData();
-  }, [user]);
+  }, [user, dataSource]);
 
-  // Listen for Shopify connection/disconnection
+  // Listen for Shopify connection/disconnection AND Square changes
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "shopifyConnected" || e.key === "shopifyProducts" || e.key === "shopifySales") {
-        console.log("🔄 Shopify connection status changed in Dashboard, reloading data");
+      if (e.key === "shopifyConnected" || e.key === "shopifyProducts" || e.key === "shopifySales" ||
+          e.key === "squareConnected" || e.key === "squarePayments" || e.key === "squareOrders") {
+        console.log("🔄 Connection status changed in Dashboard, reloading data");
         // Reload data when connection status changes
-        if (isShopifyConnected()) {
+        if (dataSource === "square" && isSquareConnected()) {
+          const squareSales = getSquareSalesFromStorage();
+          setProducts([]);
+          setSales(squareSales);
+        } else if (dataSource === "shopify" && isShopifyConnected()) {
           const shopifyProducts = getShopifyProductsFromStorage();
           const shopifySales = getShopifySalesFromStorage();
           
@@ -156,7 +209,7 @@ export default function Dashboard() {
 
     window.addEventListener("storage", handleStorageChange);
     return () => window.removeEventListener("storage", handleStorageChange);
-  }, []);
+  }, [dataSource]);
 
   // Monitor inventory for low stock alerts (Smart Notifications - Growth+ feature)
   useEffect(() => {
@@ -524,17 +577,51 @@ export default function Dashboard() {
               <h2 className="page-title">Financial Overview</h2>
               <p className="page-subtitle">
                 Welcome back, {user?.displayName || user?.email?.split("@")[0] || "User"}
-                {isShopifyConnected() && <span style={{marginLeft: "1rem", color: "#10b981", fontWeight: "bold"}}>📊 Powered by Real Shopify Data</span>}
+                {isShopifyConnected() && dataSource === "shopify" && <span style={{marginLeft: "1rem", color: "#10b981", fontWeight: "bold"}}>📊 Powered by Real Shopify Data</span>}
+                {isSquareConnected() && dataSource === "square" && <span style={{marginLeft: "1rem", color: "#3b82f6", fontWeight: "bold"}}>🎯 via Square POS</span>}
               </p>
             </div>
 
             <div className="system-status">
+              {/* Data Source Toggle - Only show if both are connected */}
+              {isShopifyConnected() && isSquareConnected() && (
+                <div style={{ display: "flex", gap: "8px", alignItems: "center", marginRight: "20px" }}>
+                  <button
+                    onClick={() => setDataSource("shopify")}
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: "4px",
+                      border: dataSource === "shopify" ? "2px solid #10b981" : "1px solid #ddd",
+                      background: dataSource === "shopify" ? "#10b98120" : "#fff",
+                      cursor: "pointer",
+                      fontWeight: dataSource === "shopify" ? "600" : "400",
+                      fontSize: "13px",
+                    }}
+                  >
+                    📊 Shopify
+                  </button>
+                  <button
+                    onClick={() => setDataSource("square")}
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: "4px",
+                      border: dataSource === "square" ? "2px solid #3b82f6" : "1px solid #ddd",
+                      background: dataSource === "square" ? "#3b82f620" : "#fff",
+                      cursor: "pointer",
+                      fontWeight: dataSource === "square" ? "600" : "400",
+                      fontSize: "13px",
+                    }}
+                  >
+                    🎯 Square
+                  </button>
+                </div>
+              )}
               <div className="status-dot"></div>
               <span className="status-text">All Systems Active</span>
             </div>
           </div>
 
-          {!isShopifyConnected() && (
+          {!isShopifyConnected() && !isSquareConnected() && (
             <div style={{
               background: "linear-gradient(135deg, #d4af37 0%, #f4d03f 100%)",
               border: "1px solid #b8860b",
@@ -548,6 +635,27 @@ export default function Dashboard() {
               <AlertCircle size={20} style={{ color: "#333", flexShrink: 0, marginTop: "2px" }} />
               <div style={{ flex: 1 }}>
                 <h3 style={{ color: "#333", margin: "0 0 6px 0", fontSize: "14px", fontWeight: "600" }}>
+                  Connect Shopify or Square for Real Financial Data
+                </h3>
+                <p style={{ color: "#333", margin: "0 0 8px 0", fontSize: "12px" }}>
+                  Currently showing estimates. Connect your Shopify store or Square POS to see actual revenue, expenses, and financial metrics.
+                </p>
+                <Link to="/integrations" style={{
+                  color: "#333",
+                  textDecoration: "none",
+                  fontWeight: "600",
+                  fontSize: "12px",
+                  padding: "6px 10px",
+                  background: "rgba(0,0,0,0.1)",
+                  borderRadius: "4px",
+                  display: "inline-block",
+                  border: "1px solid rgba(0,0,0,0.2)"
+                }}>
+                  Go to Integrations →
+                </Link>
+              </div>
+            </div>
+          )}
                   Connect Shopify for Real Financial Data
                 </h3>
                 <p style={{ color: "#333", margin: "0 0 8px 0", fontSize: "12px" }}>
