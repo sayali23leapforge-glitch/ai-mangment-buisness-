@@ -3,6 +3,7 @@ import { AuthProvider } from "./context/AuthContext";
 import { RoleProvider } from "./context/RoleContext";
 import { SubscriptionProvider } from "./context/SubscriptionContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { ScrollToTop } from "./components/ScrollToTop";
 
 import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
@@ -33,6 +34,7 @@ function App() {
       <AuthProvider>
         <RoleProvider>
           <SubscriptionProvider>
+            <ScrollToTop />
             <Routes>
 
           {/* --- PUBLIC ROUTES --- */}
