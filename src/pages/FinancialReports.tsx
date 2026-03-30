@@ -6,6 +6,7 @@ import TopBar from "../components/TopBar";
 import Sidebar from "../components/Sidebar";
 import { useRole } from "../context/RoleContext";
 import { useSubscription } from "../context/SubscriptionContext";
+import { useDataSource } from "../context/DataSourceContext";
 import { hasPermission } from "../utils/rolePermissions";
 import { getProducts, Product } from "../utils/localProductStore";
 import { isShopifyConnected, getShopifyProductsFromStorage, getShopifySalesFromStorage } from "../utils/shopifyDataFetcher";
@@ -208,13 +209,13 @@ export default function FinancialReports() {
   const currentRole = roleContext?.currentRole || "user";
   const { tier, trialExpired } = useSubscription();
   const location = useLocation();
+  const { dataSource, setDataSource } = useDataSource(); // Shared toggle between Financial Reports and Dashboard
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [tab, setTab] = useState<"income" | "balance" | "cash">("income");
   const [showReportMenu, setShowReportMenu] = useState(false);
   const [expenses, setExpenses] = useState<ExpenseLine[]>(() => readOperatingExpenses());
   const [productCostExpenses, setProductCostExpenses] = useState<number>(() => readProductCostExpenses());
   const [userProfile, setUserProfile] = useState<any>(null);
-  const [dataSource, setDataSource] = useState<"shopify" | "square">("shopify"); // Toggle between Shopify and Square data
   const [taxRate] = useState<number>(() => {
     const t = localStorage.getItem("taxRate");
     return t ? Number(t) : 15;

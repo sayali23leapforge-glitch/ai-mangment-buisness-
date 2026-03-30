@@ -16,6 +16,7 @@ import Sidebar from "../components/Sidebar";
 import { useAuth } from "../context/AuthContext";
 import { useRole } from "../context/RoleContext";
 import { useSubscription } from "../context/SubscriptionContext";
+import { useDataSource } from "../context/DataSourceContext";
 import { hasPermission } from "../utils/rolePermissions";
 import { getIntegrations } from "../utils/integrationStore";
 import { getProductsData, getSalesData } from "../utils/aiInsightsService";
@@ -87,7 +88,7 @@ function fmt(n: number) {
 export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [_selectedRole, setSelectedRole] = useState("Owner (Full Access)");
-  const [dataSource, setDataSource] = useState<"shopify" | "square">("shopify"); // Toggle between Shopify and Square
+  const { dataSource, setDataSource } = useDataSource(); // Shared toggle between Financial Reports and Dashboard
   const { user } = useAuth();
   const { currentRole } = useRole();
   const { tier } = useSubscription();

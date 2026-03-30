@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import { AuthProvider } from "./context/AuthContext";
 import { RoleProvider } from "./context/RoleContext";
 import { SubscriptionProvider } from "./context/SubscriptionContext";
+import { DataSourceProvider } from "./context/DataSourceContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { ScrollToTop } from "./components/ScrollToTop";
 
@@ -34,8 +35,9 @@ function App() {
       <AuthProvider>
         <RoleProvider>
           <SubscriptionProvider>
-            <ScrollToTop />
-            <Routes>
+            <DataSourceProvider>
+              <ScrollToTop />
+              <Routes>
 
           {/* --- PUBLIC ROUTES --- */}
           <Route path="/login" element={<Login />} />
@@ -203,6 +205,7 @@ function App() {
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
 
         </Routes>
+            </DataSourceProvider>
           </SubscriptionProvider>
         </RoleProvider>
       </AuthProvider>
