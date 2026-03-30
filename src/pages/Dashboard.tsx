@@ -590,14 +590,15 @@ export default function Dashboard() {
                   <button
                     onClick={() => setDataSource("shopify")}
                     style={{
-                      padding: "4px 8px",
-                      borderRadius: "3px",
+                      padding: "6px 12px",
+                      borderRadius: "4px",
                       border: dataSource === "shopify" ? "2px solid #10b981" : "1px solid #ccc",
                       background: dataSource === "shopify" ? "#10b98115" : "#f5f5f5",
                       cursor: "pointer",
                       fontWeight: dataSource === "shopify" ? "600" : "400",
-                      fontSize: "11px",
-                      transition: "all 0.1s",
+                      fontSize: "12px",
+                      transition: "all 0.15s",
+                      color: dataSource === "shopify" ? "#10b981" : "#666",
                     }}
                   >
                     Shopify
@@ -605,14 +606,15 @@ export default function Dashboard() {
                   <button
                     onClick={() => setDataSource("square")}
                     style={{
-                      padding: "4px 8px",
-                      borderRadius: "3px",
+                      padding: "6px 12px",
+                      borderRadius: "4px",
                       border: dataSource === "square" ? "2px solid #3b82f6" : "1px solid #ccc",
                       background: dataSource === "square" ? "#3b82f615" : "#f5f5f5",
                       cursor: "pointer",
                       fontWeight: dataSource === "square" ? "600" : "400",
-                      fontSize: "11px",
-                      transition: "all 0.1s",
+                      fontSize: "12px",
+                      transition: "all 0.15s",
+                      color: dataSource === "square" ? "#3b82f6" : "#666",
                     }}
                   >
                     Square

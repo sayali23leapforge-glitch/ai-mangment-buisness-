@@ -4,7 +4,6 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, R
 import { AlertCircle, Lock } from "lucide-react";
 import TopBar from "../components/TopBar";
 import Sidebar from "../components/Sidebar";
-import { ToggleSwitch } from "../components/ToggleSwitch";
 import { useRole } from "../context/RoleContext";
 import { useSubscription } from "../context/SubscriptionContext";
 import { useDataSource } from "../context/DataSourceContext";
@@ -675,15 +674,39 @@ export default function FinancialReports() {
         <div className="fr-actions">
           {/* Data Source Toggle - Only show if both are connected */}
           {isShopifyConnected() && isSquareConnected() && (
-            <div style={{ marginRight: "12px" }}>
-              <ToggleSwitch
-                leftLabel="Shopify"
-                rightLabel="Square"
-                isRight={dataSource === "square"}
-                onChange={(isRight) => setDataSource(isRight ? "square" : "shopify")}
-                leftColor="#10b981"
-                rightColor="#3b82f6"
-              />
+            <div style={{ display: "flex", gap: "4px", alignItems: "center", marginRight: "12px" }}>
+              <button
+                onClick={() => setDataSource("shopify")}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: "4px",
+                  border: dataSource === "shopify" ? "2px solid #10b981" : "1px solid #ccc",
+                  background: dataSource === "shopify" ? "#10b98115" : "#f5f5f5",
+                  cursor: "pointer",
+                  fontWeight: dataSource === "shopify" ? "600" : "400",
+                  fontSize: "12px",
+                  transition: "all 0.15s",
+                  color: dataSource === "shopify" ? "#10b981" : "#666",
+                }}
+              >
+                Shopify
+              </button>
+              <button
+                onClick={() => setDataSource("square")}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: "4px",
+                  border: dataSource === "square" ? "2px solid #3b82f6" : "1px solid #ccc",
+                  background: dataSource === "square" ? "#3b82f615" : "#f5f5f5",
+                  cursor: "pointer",
+                  fontWeight: dataSource === "square" ? "600" : "400",
+                  fontSize: "12px",
+                  transition: "all 0.15s",
+                  color: dataSource === "square" ? "#3b82f6" : "#666",
+                }}
+              >
+                Square
+              </button>
             </div>
           )}
           {/* Show Square warning if only Square is connected */}
