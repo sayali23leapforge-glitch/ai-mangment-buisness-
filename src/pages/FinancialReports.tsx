@@ -660,7 +660,7 @@ export default function FinancialReports() {
             Comprehensive financial statements and analysis
             {isShopifyConnected() && dataSource === "shopify" && (
               <span style={{marginLeft: "1rem", color: "#10b981", fontWeight: "bold"}}>
-                📊 Real Shopify Data • Last sync: {lastSyncTime}
+                📊 Real Shopify Data
               </span>
             )}
             {isSquareConnected() && dataSource === "square" && (
