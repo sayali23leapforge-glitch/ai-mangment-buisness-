@@ -283,28 +283,42 @@ export default function FinancialReports() {
 
   // Listen for Shopify connection/disconnection AND manual sales changes AND Square changes
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout | null = null;
+    
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "shopifyConnected" || e.key === "shopifyProducts" || e.key === "shopifySales" || 
           e.key === "sales" || e.key === "businessExpenses" || 
           e.key === "squareConnected" || e.key === "squarePayments" || e.key === "squareOrders") {
-        console.log("🔄 Data changed:", e.key, "- Refreshing calculations");
-        setExpenses(readOperatingExpenses());
-        setProductCostExpenses(readProductCostExpenses());
-        setDataRefresh(prev => prev + 1); // Trigger re-render
+        console.log("🔄 Data changed:", e.key, "- Queuing refresh");
+        
+        // Debounce expensive calculations - wait 100ms in case multiple storage events fire
+        if (timeoutId) clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+          console.log("✅ Applying queued updates");
+          setExpenses(readOperatingExpenses());
+          setProductCostExpenses(readProductCostExpenses());
+          setDataRefresh(prev => prev + 1); // Trigger re-render
+        }, 100);
       }
     };
 
-    // Listen for custom event from Record Sale page (same tab)
+    // Listen for custom events from Record Sale page (same tab)
     const handleSalesUpdated = (e: any) => {
-      console.log("🔔 Custom event: salesUpdated - Refreshing calculations");
-      setDataRefresh(prev => prev + 1);
+      console.log("🔔 Custom event: salesUpdated - Queuing refresh");
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        setDataRefresh(prev => prev + 1);
+      }, 100);
     };
 
     const handleExpensesUpdated = (e: any) => {
-      console.log("🔔 Custom event: expensesUpdated - Refreshing calculations");
-      setExpenses(readOperatingExpenses());
-      setProductCostExpenses(readProductCostExpenses());
-      setDataRefresh(prev => prev + 1);
+      console.log("🔔 Custom event: expensesUpdated - Queuing refresh");
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        setExpenses(readOperatingExpenses());
+        setProductCostExpenses(readProductCostExpenses());
+        setDataRefresh(prev => prev + 1);
+      }, 100);
     };
 
     window.addEventListener("storage", handleStorageChange);
@@ -312,6 +326,7 @@ export default function FinancialReports() {
     window.addEventListener("expensesUpdated", handleExpensesUpdated);
     
     return () => {
+      if (timeoutId) clearTimeout(timeoutId);
       window.removeEventListener("storage", handleStorageChange);
       window.removeEventListener("salesUpdated", handleSalesUpdated);
       window.removeEventListener("expensesUpdated", handleExpensesUpdated);
