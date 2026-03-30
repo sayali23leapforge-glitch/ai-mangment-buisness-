@@ -4,6 +4,7 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, R
 import { AlertCircle, Lock } from "lucide-react";
 import TopBar from "../components/TopBar";
 import Sidebar from "../components/Sidebar";
+import { ToggleSwitch } from "../components/ToggleSwitch";
 import { useRole } from "../context/RoleContext";
 import { useSubscription } from "../context/SubscriptionContext";
 import { useDataSource } from "../context/DataSourceContext";
@@ -219,11 +220,6 @@ export default function FinancialReports() {
   const [taxRate] = useState<number>(() => {
     const t = localStorage.getItem("taxRate");
     return t ? Number(t) : 15;
-  });
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [lastSyncTime, setLastSyncTime] = useState<string>(() => {
-    const saved = localStorage.getItem("shopifyLastSyncTime");
-    return saved ? new Date(Number(saved)).toLocaleString() : "Never";
   });
   const [, setDataRefresh] = useState(0); // Trigger re-render on data changes
 
@@ -586,34 +582,6 @@ export default function FinancialReports() {
     setShowReportMenu(false);
   }
 
-  async function handleRefreshShopifyData() {
-    if (!isShopifyConnected()) {
-      alert("Shopify is not connected. Please connect Shopify in Integrations to refresh data.");
-      return;
-    }
-
-    setIsRefreshing(true);
-    try {
-      const { refreshShopifyProducts } = await import("../utils/shopifyDataFetcher");
-      const result = await refreshShopifyProducts();
-      
-      if (result.success) {
-        // Update last sync time
-        const now = Date.now();
-        localStorage.setItem("shopifyLastSyncTime", String(now));
-        setLastSyncTime(new Date(now).toLocaleString());
-        alert(`✅ Shopify data refreshed!\n\n${result.count} products found.\n\nPlease refresh the page to see updated financial data.`);
-      } else {
-        alert(`⚠️ ${result.message || "Failed to refresh Shopify data"}`);
-      }
-    } catch (error) {
-      console.error("Error refreshing Shopify data:", error);
-      alert("Error refreshing Shopify data. Check console for details.");
-    } finally {
-      setIsRefreshing(false);
-    }
-  }
-
   // Check if user has access to advanced Financial Reports (Growth+ for advanced features)
   if (tier === "free" || trialExpired) {
     return (
@@ -707,37 +675,15 @@ export default function FinancialReports() {
         <div className="fr-actions">
           {/* Data Source Toggle - Only show if both are connected */}
           {isShopifyConnected() && isSquareConnected() && (
-            <div style={{ display: "flex", gap: "4px", alignItems: "center", marginRight: "8px" }}>
-              <button
-                onClick={() => setDataSource("shopify")}
-                style={{
-                  padding: "4px 8px",
-                  borderRadius: "3px",
-                  border: dataSource === "shopify" ? "2px solid #10b981" : "1px solid #ccc",
-                  background: dataSource === "shopify" ? "#10b98115" : "#f5f5f5",
-                  cursor: "pointer",
-                  fontWeight: dataSource === "shopify" ? "600" : "400",
-                  fontSize: "11px",
-                  transition: "all 0.1s",
-                }}
-              >
-                Shopify
-              </button>
-              <button
-                onClick={() => setDataSource("square")}
-                style={{
-                  padding: "4px 8px",
-                  borderRadius: "3px",
-                  border: dataSource === "square" ? "2px solid #3b82f6" : "1px solid #ccc",
-                  background: dataSource === "square" ? "#3b82f615" : "#f5f5f5",
-                  cursor: "pointer",
-                  fontWeight: dataSource === "square" ? "600" : "400",
-                  fontSize: "11px",
-                  transition: "all 0.1s",
-                }}
-              >
-                Square
-              </button>
+            <div style={{ marginRight: "12px" }}>
+              <ToggleSwitch
+                leftLabel="Shopify"
+                rightLabel="Square"
+                isRight={dataSource === "square"}
+                onChange={(isRight) => setDataSource(isRight ? "square" : "shopify")}
+                leftColor="#10b981"
+                rightColor="#3b82f6"
+              />
             </div>
           )}
           {/* Show Square warning if only Square is connected */}
@@ -745,17 +691,6 @@ export default function FinancialReports() {
             <div style={{ marginRight: "12px", fontSize: "12px", fontWeight: "600", color: "#3b82f6" }}>
               🎯 via Square POS
             </div>
-          )}
-          {isShopifyConnected() && (
-            <button 
-              className="btn-generate" 
-              onClick={handleRefreshShopifyData}
-              disabled={isRefreshing}
-              style={{marginRight: "0.5rem"}}
-              title="Refresh data from Shopify"
-            >
-              {isRefreshing ? "🔄 Refreshing..." : "🔄 Refresh Shopify Data"}
-            </button>
           )}
           <div className="report-menu-wrapper">
             <button className="btn-generate" onClick={() => setShowReportMenu(!showReportMenu)}>
