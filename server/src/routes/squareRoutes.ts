@@ -14,6 +14,7 @@ const router = Router();
  */
 router.get('/health', squareController.healthCheck);
 router.get('/status', squareController.getStatus);
+router.get('/debug', squareController.getDebugInfo);
 
 /**
  * Connection Endpoint

@@ -182,6 +182,42 @@ export const getStatus = async (req: Request, res: Response): Promise<void> => {
 };
 
 /**
+ * GET /square/debug
+ * Debug endpoint - checks if Square environment variables are configured
+ */
+export const getDebugInfo = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const hasAccessToken = !!process.env.SQUARE_ACCESS_TOKEN;
+    const hasAppId = !!process.env.SQUARE_APPLICATION_ID;
+    const hasLocationId = !!process.env.SQUARE_LOCATION_ID;
+    const environment = process.env.SQUARE_ENVIRONMENT || 'unknown';
+
+    const isFullyConfigured = hasAccessToken && hasAppId && hasLocationId;
+
+    res.json({
+      status: 'ok',
+      debug: {
+        configured: isFullyConfigured,
+        environment,
+        has_access_token: hasAccessToken,
+        has_application_id: hasAppId,
+        has_location_id: hasLocationId,
+        message: isFullyConfigured 
+          ? '✅ Square is fully configured and ready to use'
+          : '❌ Square configuration incomplete. Please add SQUARE_ACCESS_TOKEN, SQUARE_APPLICATION_ID, and SQUARE_LOCATION_ID environment variables.',
+      },
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    logger.error('❌ Debug check failed', error);
+    res.status(500).json({
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Debug check failed',
+    });
+  }
+};
+
+/**
  * GET /square/payments/:id
  * Get a specific payment by ID
  */

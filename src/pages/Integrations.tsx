@@ -332,6 +332,16 @@ const Integrations = () => {
     try {
       console.log("🔄 Starting Square connection...");
       
+      // First, check if backend is configured
+      const debugResponse = await fetch(getApiUrl("/square/debug"));
+      const debugData = await debugResponse.json();
+      
+      if (!debugData.debug?.configured) {
+        alert("⚠️ Square is not configured on the server.\n\nThe admin needs to add the following environment variables to Render:\n- SQUARE_ACCESS_TOKEN\n- SQUARE_APPLICATION_ID\n- SQUARE_LOCATION_ID\n\nContact your system administrator.");
+        setSyncingSquare(false);
+        return;
+      }
+      
       // Call backend endpoint to connect to Square
       const response = await fetch(getApiUrl("/square/connect"), {
         method: "POST",
@@ -341,7 +351,8 @@ const Integrations = () => {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to connect to Square");
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to connect to Square");
       }
 
       const data = await response.json();
@@ -391,11 +402,14 @@ const Integrations = () => {
         // Dispatch event to notify other pages that Square data has been synced
         window.dispatchEvent(new CustomEvent('squareDataSynced', { detail: { orders: data.data.total_orders_synced, payments: data.data.total_payments_synced } }));
 
-        alert(`✅ Connected to Square!\n\n✅ Synced ${data.data.total_payments_synced || 0} payments\n✅ Synced ${data.data.total_orders_synced || 0} orders\n\nGo to Financial Reports to see your Square data!`);
+        const paymentText = data.data.total_payments_synced > 0 ? `✅ Synced ${data.data.total_payments_synced} payments` : "📊 No payments found (this is normal for new accounts)";
+        const orderText = data.data.total_orders_synced > 0 ? `✅ Synced ${data.data.total_orders_synced} orders` : "📊 No orders found (this is normal for new accounts)";
+        
+        alert(`✅ Connected to Square!\n\n${paymentText}\n${orderText}\n\nGo to Financial Reports to see your Square data!`);
       }
     } catch (error) {
       console.error("❌ Square connection failed:", error);
-      alert("Failed to connect to Square. Please check the console for details.");
+      alert(`❌ Failed to connect to Square.\n\nError: ${error instanceof Error ? error.message : 'Unknown error'}\n\nPlease check:\n1. Your Square Account is active\n2. You have transactions/orders in Square\n3. Check console for more details`);
       syncHistory.unshift({
         app: "Square",
         action: "❌ Connection failed",
