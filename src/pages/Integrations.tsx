@@ -351,6 +351,16 @@ const Integrations = () => {
         // Store connection status
         localStorage.setItem("squareConnected", JSON.stringify(true));
         localStorage.setItem("squareData", JSON.stringify(data.data));
+        
+        // Store actual orders and payments for Financial Reports
+        if (data.data.orders && Array.isArray(data.data.orders)) {
+          localStorage.setItem("squareOrders", JSON.stringify(data.data.orders));
+          console.log(`✅ Stored ${data.data.orders.length} Square orders in localStorage`);
+        }
+        if (data.data.payments && Array.isArray(data.data.payments)) {
+          localStorage.setItem("squarePayments", JSON.stringify(data.data.payments));
+          console.log(`✅ Stored ${data.data.payments.length} Square payments in localStorage`);
+        }
 
         setSquareConnected(true);
         setSquareData({
@@ -373,12 +383,15 @@ const Integrations = () => {
 
         syncHistory.unshift({
           app: "Square",
-          action: `✅ Connected - ${data.data.total_payments_synced || 0} payments, ${data.data.total_orders_synced || 0} orders`,
+          action: `✅ Connected - ${data.data.total_payments_synced || 0} payments, ${data.data.total_orders_synced || 0} orders synced`,
           status: "Success",
           time: "just now",
         });
 
-        alert(`✅ Connected to Square! Synced ${data.data.total_payments_synced || 0} payments and ${data.data.total_orders_synced || 0} orders`);
+        // Dispatch event to notify other pages that Square data has been synced
+        window.dispatchEvent(new CustomEvent('squareDataSynced', { detail: { orders: data.data.total_orders_synced, payments: data.data.total_payments_synced } }));
+
+        alert(`✅ Connected to Square!\n\n✅ Synced ${data.data.total_payments_synced || 0} payments\n✅ Synced ${data.data.total_orders_synced || 0} orders\n\nGo to Financial Reports to see your Square data!`);
       }
     } catch (error) {
       console.error("❌ Square connection failed:", error);

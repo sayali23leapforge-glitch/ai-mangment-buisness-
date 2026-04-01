@@ -317,15 +317,25 @@ export default function FinancialReports() {
       }, 100);
     };
 
+    const handleSquareDataSynced = (e: any) => {
+      console.log("🔔 Custom event: squareDataSynced - Queuing refresh with new Square data", e.detail);
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        setDataRefresh(prev => prev + 1);
+      }, 100);
+    };
+
     window.addEventListener("storage", handleStorageChange);
     window.addEventListener("salesUpdated", handleSalesUpdated);
     window.addEventListener("expensesUpdated", handleExpensesUpdated);
+    window.addEventListener("squareDataSynced", handleSquareDataSynced);
     
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
       window.removeEventListener("storage", handleStorageChange);
       window.removeEventListener("salesUpdated", handleSalesUpdated);
       window.removeEventListener("expensesUpdated", handleExpensesUpdated);
+      window.removeEventListener("squareDataSynced", handleSquareDataSynced);
     };
   }, []);
   

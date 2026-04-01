@@ -208,8 +208,21 @@ export default function Dashboard() {
       }
     };
 
+    const handleSquareDataSynced = (e: any) => {
+      console.log("🔔 Custom event: squareDataSynced in Dashboard - Reloading data", e.detail);
+      if (dataSource === "square" && isSquareConnected()) {
+        const squareSales = getSquareSalesFromStorage();
+        setProducts([]);
+        setSales(squareSales);
+      }
+    };
+
     window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
+    window.addEventListener("squareDataSynced", handleSquareDataSynced);
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("squareDataSynced", handleSquareDataSynced);
+    };
   }, [dataSource]);
 
   // Monitor inventory for low stock alerts (Smart Notifications - Growth+ feature)

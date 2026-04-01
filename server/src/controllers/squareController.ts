@@ -51,8 +51,10 @@ export const connectSquare = async (req: Request, res: Response): Promise<void> 
         message: 'Connected to Square and synced data',
         data: {
           connected: true,
-          payments_synced: payments.length,
-          orders_synced: orders.length,
+          total_payments_synced: payments.length,
+          total_orders_synced: orders.length,
+          payments: payments,  // Return actual payments data
+          orders: orders,      // Return actual orders data
           timestamp: new Date().toISOString(),
         },
       });
