@@ -840,46 +840,47 @@ export default function FinancialReports() {
           <div>
             <div style={{ marginTop: "20px", marginBottom: "20px" }} />
             
-            <div className="section-title">📊 Square Transactions Breakdown</div>
+            <div className="section-title">Square Transactions Breakdown</div>
             
             {/* Completed Payments */}
             <div className="fr-line small">
-              <div className="fr-left">✅ Completed Payments</div>
+              <div className="fr-left">Completed Payments</div>
               <div className="fr-right positive">{breakdown.completedPayments}</div>
             </div>
             
             {/* Completed Orders */}
             <div className="fr-line small">
-              <div className="fr-left">✅ Completed Orders</div>
+              <div className="fr-left">Completed Orders</div>
               <div className="fr-right positive">{breakdown.completedOrders}</div>
             </div>
             
             {/* Failed Payments */}
             <div className="fr-line small">
-              <div className="fr-left">❌ Failed Payments</div>
+              <div className="fr-left">Failed Payments</div>
               <div className="fr-right negative">{breakdown.failedPayments}</div>
             </div>
             
             {/* Cancelled Orders */}
             <div className="fr-line small">
-              <div className="fr-left">❌ Cancelled Orders</div>
+              <div className="fr-left">Cancelled Orders</div>
               <div className="fr-right negative">{breakdown.cancelledOrders}</div>
+            </div>
+            
+            {/* Total Transactions */}
+            <div className="fr-line total">
+              <div className="fr-left">Total Transactions</div>
+              <div className="fr-right">{totalTransactions}</div>
             </div>
             
             {/* Total Failed Amount */}
             {breakdown.totalFailedAmount > 0 && (
-              <div className="fr-line small" style={{ borderTop: "1px solid #444", marginTop: "8px", paddingTop: "8px" }}>
-                <div className="fr-left" style={{ color: "#ef4444" }}>💰 Total Failed Amount</div>
+              <div className="fr-line small" style={{ marginTop: "8px" }}>
+                <div className="fr-left" style={{ color: "#ef4444" }}>Total Failed Amount</div>
                 <div className="fr-right negative" style={{ color: "#ef4444", fontWeight: "bold" }}>
                   {fmt(breakdown.totalFailedAmount)}
                 </div>
               </div>
             )}
-            
-            <div className="fr-line total">
-              <div className="fr-left">Total Transactions</div>
-              <div className="fr-right">{totalTransactions}</div>
-            </div>
           </div>
         ) : null;
       })()}
