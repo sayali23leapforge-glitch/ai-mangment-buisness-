@@ -795,6 +795,65 @@ export default function FinancialReports() {
         )}
       </div>
 
+      {/* Failed/Cancelled Transactions Summary Container - Shows for Square Only */}
+      {dataSource === "square" && (() => {
+        const failedTransactions = getFailedCancelledTransactions();
+        const totalFailedAmount = failedTransactions.reduce((sum, t) => sum + t.amount, 0);
+        
+        return failedTransactions.length > 0 ? (
+          <div style={{
+            backgroundColor: '#2a1a1a',
+            border: '2px solid #ef4444',
+            borderRadius: '8px',
+            padding: '16px',
+            marginBottom: '20px',
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '16px'
+          }}>
+            <div>
+              <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 'bold' }}>
+                ❌ Failed Transactions Count
+              </div>
+              <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#ef4444' }}>
+                {failedTransactions.length}
+              </div>
+            </div>
+            
+            <div>
+              <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 'bold' }}>
+                Total Failed Amount
+              </div>
+              <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#ef4444' }}>
+                {fmt(totalFailedAmount)}
+              </div>
+            </div>
+
+            <div style={{ gridColumn: '1 / -1' }}>
+              <button
+                onClick={() => setTab("failed")}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  backgroundColor: '#8b0000',
+                  color: '#ffd700',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: '13px',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseOver={(e) => (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#a80000'}
+                onMouseOut={(e) => (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#8b0000'}
+              >
+                📋 View Failed Transactions Details
+              </button>
+            </div>
+          </div>
+        ) : null;
+      })()}
+
       <div className="fr-body">
         {tab === "income" && (
           <div className="income-card">
