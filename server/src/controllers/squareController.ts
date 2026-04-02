@@ -248,6 +248,60 @@ export const getPaymentById = async (req: Request, res: Response): Promise<void>
 };
 
 /**
+ * GET /square/raw-data
+ * Debug endpoint - shows ACTUAL raw data from Square API
+ * This fetches fresh data directly from Square right now
+ */
+export const getRawSquareData = async (req: Request, res: Response): Promise<void> => {
+  try {
+    logger.info('🔍 Fetching RAW Square data for debugging...');
+
+    // Fetch fresh raw data from Square API
+    const payments = await squareService.syncPayments();
+    const orders = await squareService.syncOrders();
+
+    logger.info('✅ Raw data fetch complete', {
+      actual_payments: payments.length,
+      actual_orders: orders.length,
+    });
+
+    res.json({
+      status: 'success',
+      message: 'Raw data from Square API RIGHT NOW',
+      data: {
+        payments_count: payments.length,
+        orders_count: orders.length,
+        location_id: process.env.SQUARE_LOCATION_ID,
+        timestamp: new Date().toISOString(),
+        payments: payments.map((p: any) => ({
+          id: p.id,
+          amount: p.amount_money?.amount,
+          status: p.status,
+          created_at: p.created_at,
+        })),
+        orders: orders.map((o: any) => ({
+          id: o.id,
+          reference_id: o.reference_id,
+          state: o.state,
+          total: o.total_money?.amount,
+          created_at: o.created_at,
+        })),
+      },
+    });
+  } catch (error) {
+    logger.error('❌ Failed to fetch raw Square data', error);
+    res.status(500).json({
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Failed to fetch raw data',
+      debug_info: {
+        location_id: process.env.SQUARE_LOCATION_ID,
+        has_token: !!process.env.SQUARE_ACCESS_TOKEN,
+      },
+    });
+  }
+};
+
+/**
  * GET /square/orders/:id
  * Get a specific order by ID
  */
