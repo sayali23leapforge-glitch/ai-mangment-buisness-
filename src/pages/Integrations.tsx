@@ -127,6 +127,7 @@ const Integrations = () => {
     if (user?.uid) {
       loadShopifyStatus();
       loadQuickBooksStatus();
+      loadSquareStatus();
 
       const params = new URLSearchParams(window.location.search);
       const shopifyParam = params.get("shopify");
@@ -197,6 +198,50 @@ const Integrations = () => {
             : item
         )
       );
+    }
+  };
+
+  const loadSquareStatus = () => {
+    // Check localStorage for persisted Square connection
+    const isConnected = localStorage.getItem("squareConnected") === "true";
+    const squareDataStr = localStorage.getItem("squareData");
+    
+    if (isConnected && squareDataStr) {
+      try {
+        const parsedData = JSON.parse(squareDataStr);
+        setSquareConnected(true);
+        setSquareData({
+          payments: parsedData.total_payments_synced || 0,
+          orders: parsedData.total_orders_synced || 0,
+          lastSync: new Date().toLocaleTimeString(),
+        });
+        
+        // Update integrations list
+        setIntegrations((prev) =>
+          prev.map((item) =>
+            item.id === "square"
+              ? {
+                  ...item,
+                  connected: true,
+                  lastSync: new Date().toLocaleTimeString(),
+                }
+              : item
+          )
+        );
+        
+        console.log("✅ Square connection restored from localStorage");
+        console.log(`   📊 Orders: ${parsedData.total_orders_synced || 0}`);
+        console.log(`   💳 Payments: ${parsedData.total_payments_synced || 0}`);
+      } catch (error) {
+        console.error("❌ Failed to parse Square data:", error);
+        setSquareConnected(false);
+        setSquareData(null);
+        localStorage.removeItem("squareConnected");
+        localStorage.removeItem("squareData");
+      }
+    } else {
+      setSquareConnected(false);
+      setSquareData(null);
     }
   };
 
@@ -427,9 +472,11 @@ const Integrations = () => {
         setSquareConnected(false);
         setSquareData(null);
         
-        // Clear localStorage Square data
+        // Clear all localStorage Square data
         localStorage.removeItem("squareConnected");
         localStorage.removeItem("squareData");
+        localStorage.removeItem("squareOrders");
+        localStorage.removeItem("squarePayments");
         
         setIntegrations((prev) =>
           prev.map((item) =>
@@ -438,6 +485,8 @@ const Integrations = () => {
               : item
           )
         );
+        
+        console.log("✅ Square disconnected and all data cleared");
       } catch (error) {
         console.error("Disconnect failed:", error);
       }
@@ -465,21 +514,47 @@ const Integrations = () => {
       console.log("✅ Square sync response:", data);
 
       if (data.status === "success") {
+        // Update state
         setSquareData({
-          payments: data.data?.total_payments_synced || 0,
-          orders: data.data?.total_orders_synced || 0,
+          payments: data.data?.payments_synced || 0,
+          orders: data.data?.orders_synced || 0,
           lastSync: new Date().toLocaleTimeString(),
         });
 
+        // Update localStorage with latest data
+        const squareDataStr = localStorage.getItem("squareData");
+        if (squareDataStr) {
+          try {
+            const parsedData = JSON.parse(squareDataStr);
+            parsedData.total_payments_synced = data.data?.payments_synced || 0;
+            parsedData.total_orders_synced = data.data?.orders_synced || 0;
+            localStorage.setItem("squareData", JSON.stringify(parsedData));
+            localStorage.setItem("squareLastSync", new Date().toISOString());
+          } catch (err) {
+            console.error("Failed to update Square data in localStorage:", err);
+          }
+        }
+
         syncHistory.unshift({
           app: "Square",
-          action: `✅ Synced - ${data.data?.total_payments_synced || 0} payments, ${data.data?.total_orders_synced || 0} orders`,
+          action: `✅ Synced - ${data.data?.payments_synced || 0} payments, ${data.data?.orders_synced || 0} orders`,
           status: "Success",
           time: "just now",
         });
+
+        // Dispatch event to refresh Financial Reports and Dashboard
+        window.dispatchEvent(new CustomEvent('squareDataSynced', { 
+          detail: { 
+            orders: data.data?.orders_synced || 0, 
+            payments: data.data?.payments_synced || 0 
+          } 
+        }));
+
+        alert(`✅ Square data refreshed!\n\n${data.data?.payments_synced || 0} payments synced\n${data.data?.orders_synced || 0} orders synced`);
       }
     } catch (error) {
       console.error("❌ Square sync failed:", error);
+      alert(`❌ Square sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       syncHistory.unshift({
         app: "Square",
         action: "❌ Sync failed",
