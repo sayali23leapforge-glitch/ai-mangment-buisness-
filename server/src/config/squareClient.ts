@@ -121,7 +121,7 @@ class SquareClient {
           query: {
             filter: {
               state_filter: {
-                states: ['OPEN', 'COMPLETED', 'CANCELED'],
+                states: ['COMPLETED'], // Only fetch COMPLETED orders
               },
             },
           },
