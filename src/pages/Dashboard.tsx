@@ -166,33 +166,34 @@ export default function Dashboard() {
             // Sync Shopify data
             const syncResult = await syncShopifyFinancialData();
           
-          if (syncResult.success) {
-            console.log(`   ✅ Sync successful! Data ready for display`);
-            
-            // Get products and sales from storage
-            const shopifyProducts = getShopifyProductsFromStorage();
-            const shopifySales = getShopifySalesFromStorage();
-            
-            console.log(`   ✓ Loaded ${shopifyProducts?.length || 0} products`);
-            console.log(`   ✓ Loaded ${shopifySales?.length || 0} sales`);
-            
-            setProducts(shopifyProducts || []);
-            setSales(shopifySales || []);
+            if (syncResult.success) {
+              console.log(`   ✅ Sync successful! Data ready for display`);
+              
+              // Get products and sales from storage
+              const shopifyProducts = getShopifyProductsFromStorage();
+              const shopifySales = getShopifySalesFromStorage();
+              
+              console.log(`   ✓ Loaded ${shopifyProducts?.length || 0} products`);
+              console.log(`   ✓ Loaded ${shopifySales?.length || 0} sales`);
+              
+              setProducts(shopifyProducts || []);
+              setSales(shopifySales || []);
+            } else {
+              console.log(`   ⚠️  Syncing failed or Shopify not fully connected - showing empty state`);
+              setProducts([]);
+              setSales([]);
+            }
           } else {
-            console.log(`   ⚠️  Syncing failed or Shopify not fully connected - showing empty state`);
+            console.log(`   ❌ Shopify NOT connected - showing empty state`);
             setProducts([]);
             setSales([]);
           }
-        } else {
-          console.log(`   ❌ Shopify NOT connected - showing empty state`);
+        } 
+        else {
+          console.log(`   ❌ Selected source NOT connected - showing empty state`);
           setProducts([]);
           setSales([]);
         }
-      } else {
-        console.log(`   ❌ Selected source NOT connected - showing empty state`);
-        setProducts([]);
-        setSales([]);
-      }
       } catch (error) {
         console.error("❌ Error loading Dashboard data:", error);
         setProducts([]);
