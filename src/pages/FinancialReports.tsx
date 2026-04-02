@@ -48,6 +48,42 @@ function getSquarePaymentsFromStorage(): any[] {
   }
 }
 
+// Get all Square payments (including failed/cancelled)
+function getAllSquarePaymentsRaw(): any[] {
+  try {
+    const data = localStorage.getItem("squarePayments");
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+}
+
+// Get failed/cancelled transactions from Square 
+function getFailedCancelledTransactions(): any[] {
+  try {
+    // Get raw payments data which might include failed/cancelled status
+    const allPayiments = getAllSquarePaymentsRaw();
+    
+    // Filter for non-completed status
+    const failed = allPayiments.filter((payment: any) => payment.status !== 'COMPLETED');
+    
+    console.log(`📊 Found ${failed.length} failed/cancelled payments out of ${allPayiments.length} total`);
+    
+    return failed.map((payment: any) => ({
+      id: payment.id || "",
+      status: payment.status || "UNKNOWN",
+      amount: payment.amount_money?.amount ? payment.amount_money.amount / 100 : 0,
+      currency: payment.amount_money?.currency || "USD",
+      timestamp: payment.created_at || new Date().toISOString(),
+      reason: payment.receipt_url ? "See receipt" : "No receipt",
+      paymentMethod: payment.payment_method?.type || "Unknown",
+    }));
+  } catch (err) {
+    console.error("❌ Error getting failed transactions:", err);
+    return [];
+  }
+}
+
 // Get Square orders data
 function getSquareOrdersFromStorage(): any[] {
   try {
@@ -211,7 +247,7 @@ export default function FinancialReports() {
   const location = useLocation();
   const { dataSource, setDataSource } = useDataSource(); // Shared toggle between Financial Reports and Dashboard
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [tab, setTab] = useState<"income" | "balance" | "cash">("income");
+  const [tab, setTab] = useState<"income" | "balance" | "cash" | "failed">("income");
   const [showReportMenu, setShowReportMenu] = useState(false);
   const [expenses, setExpenses] = useState<ExpenseLine[]>(() => readOperatingExpenses());
   const [productCostExpenses, setProductCostExpenses] = useState<number>(() => readProductCostExpenses());
@@ -753,6 +789,10 @@ export default function FinancialReports() {
         <button className={tab === "income" ? "fr-tab active" : "fr-tab"} onClick={() => setTab("income")}>Income Statement</button>
         <button className={tab === "balance" ? "fr-tab active" : "fr-tab"} onClick={() => setTab("balance")}>Balance Sheet</button>
         <button className={tab === "cash" ? "fr-tab active" : "fr-tab"} onClick={() => setTab("cash")}>Cash Flow Statement</button>
+        {/* Show failed/cancelled transactions tab ONLY for Square */}
+        {dataSource === "square" && (
+          <button className={tab === "failed" ? "fr-tab active" : "fr-tab"} onClick={() => setTab("failed")}>❌ Failed/Cancelled</button>
+        )}
       </div>
 
       <div className="fr-body">
@@ -1026,6 +1066,102 @@ export default function FinancialReports() {
               <div className="fr-left">NET CHANGE IN CASH</div>
               <div className="fr-right positive large">{fmt(cashFlow.netChange)}</div>
             </div>
+          </div>
+        )}
+
+        {tab === "failed" && dataSource === "square" && (
+          <div className="cash-card">
+            <div className="section-title">❌ Failed/Cancelled Transactions (Square)</div>
+            <div className="section-sub">Payment and order transactions that failed or were cancelled</div>
+
+            {(() => {
+              const failedTransactions = getFailedCancelledTransactions();
+              const totalFailedAmount = failedTransactions.reduce((sum, t) => sum + t.amount, 0);
+              
+              if (failedTransactions.length === 0) {
+                return (
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '40px 20px',
+                    color: '#888',
+                    fontSize: '14px'
+                  }}>
+                    ✅ No failed or cancelled transactions
+                  </div>
+                );
+              }
+              
+              return (
+                <div>
+                  <div className="fr-line total" style={{ marginBottom: '20px' }}>
+                    <div className="fr-left">Total Failed/Cancelled Amount</div>
+                    <div className="fr-right negative" style={{ fontSize: '18px', fontWeight: 'bold' }}>
+                      {fmt(totalFailedAmount)}
+                    </div>
+                  </div>
+
+                  <div style={{
+                    overflowX: 'auto',
+                    marginBottom: '20px'
+                  }}>
+                    <table style={{
+                      width: '100%',
+                      borderCollapse: 'collapse',
+                      color: '#ccc',
+                      fontSize: '12px'
+                    }}>
+                      <thead>
+                        <tr style={{ borderBottom: '2px solid #666' }}>
+                          <th style={{ padding: '10px', textAlign: 'left', color: '#aaa' }}>Transaction ID</th>
+                          <th style={{ padding: '10px', textAlign: 'left', color: '#aaa' }}>Status</th>
+                          <th style={{ padding: '10px', textAlign: 'right', color: '#aaa' }}>Amount</th>
+                          <th style={{ padding: '10px', textAlign: 'left', color: '#aaa' }}>Date</th>
+                          <th style={{ padding: '10px', textAlign: 'left', color: '#aaa' }}>Payment Method</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {failedTransactions.map((transaction, idx) => (
+                          <tr key={idx} style={{ borderBottom: '1px solid #444' }}>
+                            <td style={{ padding: '10px' }}>
+                              <code style={{ fontSize: '11px', color: '#888' }}>
+                                {transaction.id.substring(0, 12)}...
+                              </code>
+                            </td>
+                            <td style={{ padding: '10px' }}>
+                              <span style={{
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                backgroundColor: '#8b0000',
+                                color: '#ffd700',
+                                fontSize: '11px',
+                                fontWeight: 'bold'
+                              }}>
+                                {transaction.status}
+                              </span>
+                            </td>
+                            <td style={{ padding: '10px', textAlign: 'right', color: '#ef4444' }}>
+                              {fmt(transaction.amount)}
+                            </td>
+                            <td style={{ padding: '10px', fontSize: '11px', color: '#aaa' }}>
+                              {new Date(transaction.timestamp).toLocaleString()}
+                            </td>
+                            <td style={{ padding: '10px', fontSize: '11px' }}>
+                              {transaction.paymentMethod}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="fr-line" style={{ marginTop: '20px', padding: '12px', backgroundColor: '#1a1a1a', borderLeft: '4px solid #ef4444', borderRadius: '4px' }}>
+                    <div style={{ color: '#ef4444', fontSize: '13px', fontWeight: 'bold' }}>
+                      💡 Tip: Review failed transactions in your Square Dashboard for details on why payments were declined or cancelled.
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
       </div>

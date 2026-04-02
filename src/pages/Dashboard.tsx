@@ -61,21 +61,37 @@ function isSquareConnected(): boolean {
 // Get Square orders as Sales
 function getSquareSalesFromStorage(): Sale[] {
   try {
-    const orders = localStorage.getItem("squareOrders");
-    if (!orders) return [];
+    const ordersJson = localStorage.getItem("squareOrders");
+    if (!ordersJson) {
+      console.warn("⚠️ No squareOrders in localStorage");
+      return [];
+    }
     
-    const orderData = JSON.parse(orders);
-    if (!Array.isArray(orderData)) return [];
+    const orderData = JSON.parse(ordersJson);
+    if (!Array.isArray(orderData)) {
+      console.warn("⚠️ squareOrders is not an array:", typeof orderData);
+      return [];
+    }
 
-    return orderData.map((order: any) => ({
-      id: order.id || order.order_id || "",
-      productName: order.location_name || "Square Order",
-      amount: order.total_money?.amount ? order.total_money.amount / 100 : 0,
-      timestamp: order.created_at || new Date().toISOString(),
-      quantity: order.line_items ? order.line_items.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0) : 1,
-    }));
+    console.log(`📦 Converting ${orderData.length} Square orders to sales format...`);
+    
+    const converted = orderData.map((order: any, idx: number) => {
+      const amount = order.total_money?.amount ? order.total_money.amount / 100 : 0;
+      console.log(`   Order ${idx + 1}: ID=${order.id}, total_money=${order.total_money}, amount=$${amount}`);
+      
+      return {
+        id: order.id || order.order_id || "",
+        productName: order.location_name || order.reference_id || "Square Order",
+        amount: amount,
+        timestamp: order.created_at || new Date().toISOString(),
+        quantity: order.line_items ? order.line_items.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0) : 1,
+      };
+    });
+    
+    console.log(`✅ Converted ${converted.length} orders - Total revenue: $${converted.reduce((sum, s) => sum + s.amount, 0)}`);
+    return converted;
   } catch (err) {
-    console.warn("Error converting Square data:", err);
+    console.error("❌ Error converting Square data:", err);
     return [];
   }
 }
