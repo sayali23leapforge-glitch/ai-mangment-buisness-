@@ -42,7 +42,7 @@ class SquareService {
 
   /**
    * Sync all payments from Square
-   * Fetches recent COMPLETED payments only and stores them in the database
+   * Fetches ALL payments (completed and failed) and stores them in the database
    */
   async syncPayments(beginTime?: string, endTime?: string): Promise<SyncedPayment[]> {
     try {
@@ -53,24 +53,26 @@ class SquareService {
       logger.info('🔄 Starting payment sync...');
       const startTime = Date.now();
 
-      // Fetch payments from Square
+      // Fetch ALL payments from Square (both completed and failed)
       const allPayments = await squareClient.getPayments(beginTime, endTime);
 
-      // Filter to only COMPLETED payments
+      // Separate completed and failed payments for logging
       const completedPayments = allPayments.filter((payment: any) => payment.status === 'COMPLETED');
+      const failedPayments = allPayments.filter((payment: any) => payment.status !== 'COMPLETED');
 
       logger.info(`📊 Filtered payments`, {
         total_fetched: allPayments.length,
         completed_only: completedPayments.length,
+        failed_only: failedPayments.length,
       });
 
-      // Transform and enhance payments with sync metadata
-      const syncedPayments: SyncedPayment[] = completedPayments.map((payment: any) => ({
+      // Transform and enhance payments with sync metadata - STORE ALL PAYMENTS
+      const syncedPayments: SyncedPayment[] = allPayments.map((payment: any) => ({
         ...payment,
         synced_at: new Date().toISOString(),
       }));
 
-      // Store in database
+      // Store in database (all payments - both completed and failed)
       db.addPayments(syncedPayments);
 
       // Update sync status
@@ -82,9 +84,12 @@ class SquareService {
       const duration = Date.now() - startTime;
       logger.info(`✅ Payment sync complete`, {
         count: syncedPayments.length,
+        completed: completedPayments.length,
+        failed: failedPayments.length,
         duration_ms: duration,
       });
 
+      // Return ALL payments to frontend (both completed and failed)
       return syncedPayments;
     } catch (error) {
       logger.error('❌ Error syncing payments', error);
