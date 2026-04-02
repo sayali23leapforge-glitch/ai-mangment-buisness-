@@ -33,30 +33,32 @@ export const healthCheck = async (req: Request, res: Response): Promise<void> =>
  * POST /integrations/square/connect
  * Connect to Square - Initialize Square integration
  * Frontend calls this when user clicks "Connect" button
+ * Returns REAL data only, or throws error if cannot fetch
  */
 export const connectSquare = async (req: Request, res: Response): Promise<void> => {
   try {
     logger.info('🔌 Square connect endpoint called');
 
-    // Initialize connection (may fail if credentials not set, which is ok)
+    // Initialize connection - will throw error if credentials not set
     const isConnected = await squareService.initializeConnection();
 
-    // Perform data sync (will use demo data if real credentials not available)
+    if (!isConnected) {
+      throw new Error('❌ Failed to establish Square connection. Check your Square credentials (SQUARE_ACCESS_TOKEN, SQUARE_APPLICATION_ID, SQUARE_LOCATION_ID)');
+    }
+
+    // Perform data sync - will throw error if API call fails
     logger.info('📥 Performing initial data sync...');
     const { payments, orders } = await squareService.syncAllData();
 
-    const dataSource = isConnected ? 'real' : 'demo';
-
     res.json({
       status: 'success',
-      message: `Connected to Square and synced data (${dataSource} data)`,
+      message: 'Connected to Square and fetched real data',
       data: {
         connected: true,
         total_payments_synced: payments.length,
         total_orders_synced: orders.length,
-        data_source: dataSource,  // Indicate if real or demo data
-        payments: payments,  // Return actual or demo payments data
-        orders: orders,      // Return actual or demo orders data
+        payments: payments,
+        orders: orders,
         timestamp: new Date().toISOString(),
       },
     });
@@ -64,13 +66,15 @@ export const connectSquare = async (req: Request, res: Response): Promise<void> 
     logger.info('✅ Square connect successful', {
       payments: payments.length,
       orders: orders.length,
-      source: dataSource,
     });
   } catch (error) {
     logger.error('❌ Square connect failed', error);
-    res.status(500).json({
+    const errorMessage = error instanceof Error ? error.message : 'Failed to connect to Square';
+    
+    res.status(400).json({
       status: 'error',
-      message: error instanceof Error ? error.message : 'Connection failed',
+      message: errorMessage,
+      data: { connected: false },
     });
   }
 };

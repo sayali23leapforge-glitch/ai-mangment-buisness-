@@ -138,7 +138,7 @@ class SquareService {
 
   /**
    * Full data sync - payments + orders
-   * Call this to get all recent data from Square
+   * Fetches REAL data only from Square API
    */
   async syncAllData(): Promise<{
     payments: SyncedPayment[];
@@ -148,28 +148,11 @@ class SquareService {
       logger.info('🔄 Starting full data sync...');
       db.updateSyncStatus({ status: 'syncing' });
 
-      let payments: SyncedPayment[] = [];
-      let orders: SyncedOrder[] = [];
-
-      try {
-        // Try to fetch real data from Square
-        [payments, orders] = await Promise.all([
-          this.syncPayments(),
-          this.syncOrders(),
-        ]);
-        logger.info('✅ Fetched real data from Square API');
-      } catch (squareError) {
-        logger.warn('⚠️ Could not fetch from Square API (credentials may not be set)');
-        logger.warn('📊 Using demo data instead to show app functionality');
-        
-        // Return demo data to show app functionality
-        payments = this.getDemoPayments();
-        orders = this.getDemoOrders();
-        
-        // Still store in database for consistency
-        db.addPayments(payments);
-        db.addOrders(orders);
-      }
+      // Fetch real data from Square - will throw error if credentials not set or API fails
+      const [payments, orders] = await Promise.all([
+        this.syncPayments(),
+        this.syncOrders(),
+      ]);
 
       db.updateSyncStatus({
         status: 'idle',
@@ -190,103 +173,6 @@ class SquareService {
       });
       throw error;
     }
-  }
-
-  /**
-   * Get demo payments for demonstration
-   */
-  getDemoPayments(): SyncedPayment[] {
-    return [
-      {
-        id: 'demo_payment_1',
-        order_id: 'demo_order_1',
-        amount_money: { amount: 5000, currency: 'USD' },
-        status: 'COMPLETED',
-        created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-        receipt_number: 'DEMO-001',
-        synced_at: new Date().toISOString(),
-      },
-      {
-        id: 'demo_payment_2',
-        order_id: 'demo_order_2',
-        amount_money: { amount: 3500, currency: 'USD' },
-        status: 'COMPLETED',
-        created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-        receipt_number: 'DEMO-002',
-        synced_at: new Date().toISOString(),
-      },
-      {
-        id: 'demo_payment_3',
-        order_id: 'demo_order_3',
-        amount_money: { amount: 7200, currency: 'USD' },
-        status: 'COMPLETED',
-        created_at: new Date(Date.now() - 0.5 * 24 * 60 * 60 * 1000).toISOString(),
-        receipt_number: 'DEMO-003',
-        synced_at: new Date().toISOString(),
-      },
-    ];
-  }
-
-  /**
-   * Get demo orders for demonstration
-   */
-  getDemoOrders(): SyncedOrder[] {
-    return [
-      {
-        id: 'demo_order_1',
-        reference_id: 'ORDER-001',
-        state: 'COMPLETED',
-        total_money: { amount: 5000, currency: 'USD' },
-        total_tax_money: { amount: 650, currency: 'USD' },
-        total_discount_money: { amount: 0, currency: 'USD' },
-        created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-        line_items: [
-          {
-            name: 'Demo Product A',
-            quantity: '2',
-            gross_sales_money: { amount: 5000, currency: 'USD' },
-          },
-        ],
-        location_name: 'Demo Store',
-        synced_at: new Date().toISOString(),
-      },
-      {
-        id: 'demo_order_2',
-        reference_id: 'ORDER-002',
-        state: 'COMPLETED',
-        total_money: { amount: 3500, currency: 'USD' },
-        total_tax_money: { amount: 455, currency: 'USD' },
-        total_discount_money: { amount: 0, currency: 'USD' },
-        created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-        line_items: [
-          {
-            name: 'Demo Product B',
-            quantity: '1',
-            gross_sales_money: { amount: 3500, currency: 'USD' },
-          },
-        ],
-        location_name: 'Demo Store',
-        synced_at: new Date().toISOString(),
-      },
-      {
-        id: 'demo_order_3',
-        reference_id: 'ORDER-003',
-        state: 'COMPLETED',
-        total_money: { amount: 7200, currency: 'USD' },
-        total_tax_money: { amount: 936, currency: 'USD' },
-        total_discount_money: { amount: 0, currency: 'USD' },
-        created_at: new Date(Date.now() - 0.5 * 24 * 60 * 60 * 1000).toISOString(),
-        line_items: [
-          {
-            name: 'Demo Product C',
-            quantity: '3',
-            gross_sales_money: { amount: 7200, currency: 'USD' },
-          },
-        ],
-        location_name: 'Demo Store',
-        synced_at: new Date().toISOString(),
-      },
-    ];
   }
 
   /**
