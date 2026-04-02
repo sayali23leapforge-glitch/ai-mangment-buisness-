@@ -298,10 +298,18 @@ export default function Dashboard() {
 
   // Calculate real financial metrics
   const financialMetrics = useMemo(() => {
+    console.log(`📊 FINANCIAL METRICS RECALCULATING...`);
+    console.log(`   sales.length:`, sales?.length || 0);
+    console.log(`   products.length:`, products?.length || 0);
+    
     const totalRevenue = sales.reduce((sum, s) => sum + s.amount, 0);
     const totalCOGS = products.reduce((sum, p) => sum + (p.cost || 0) * p.stock, 0);
     const grossProfit = totalRevenue - totalCOGS;
     const grossMargin = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
+    
+    console.log(`   totalRevenue: $${totalRevenue}`);
+    console.log(`   totalCOGS: $${totalCOGS}`);
+    console.log(`   grossProfit: $${grossProfit}`);
     
     // Estimate operating expenses
     const operatingExpenses = totalRevenue * 0.35;
@@ -312,6 +320,8 @@ export default function Dashboard() {
     const taxRate = 0.12;
     const taxOwed = Math.max(0, netProfit) * taxRate;
     const netAfterTax = netProfit - taxOwed;
+    
+    console.log(`   ✅ METRICS CALCULATED:`, { totalRevenue, grossProfit, netAfterTax });
     
     return {
       totalRevenue,
