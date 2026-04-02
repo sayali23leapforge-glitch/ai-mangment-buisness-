@@ -827,7 +827,11 @@ export default function FinancialReports() {
 
             <div style={{ marginTop: "40px", marginBottom: "20px" }} />
 
-            <div className="section-title">Revenue Breakdown (Waterfall) {isShopifyConnected() && <span style={{fontSize: "14px", color: "#10b981", fontWeight: "normal"}}>📊 Real Shopify Data</span>}</div>
+            <div className="section-title">
+              Revenue Breakdown (Waterfall) 💹
+              {dataSource === "square" && isSquareConnected() && <span style={{fontSize: "14px", color: "#3b82f6", fontWeight: "normal", marginLeft: "8px"}}>📊 Real Square Data</span>}
+              {dataSource === "shopify" && isShopifyConnected() && <span style={{fontSize: "14px", color: "#10b981", fontWeight: "normal", marginLeft: "8px"}}>📊 Real Shopify Data</span>}
+            </div>
             <div className="chart-container">
               {revenueBreakdownData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
