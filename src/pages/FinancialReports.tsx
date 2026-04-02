@@ -758,8 +758,8 @@ export default function FinancialReports() {
         </div>
 
         <div className="fr-actions">
-          {/* Data Source Toggle - Only show if both are connected */}
-          {isShopifyConnected() && isSquareConnected() && (
+          {/* Data Source Toggle - Always show both Shopify and Square */}
+          {(isShopifyConnected() || isSquareConnected()) && (
             <div style={{ display: "flex", gap: "4px", alignItems: "center", marginRight: "12px" }}>
               <button
                 onClick={() => setDataSource("shopify")}
@@ -768,12 +768,14 @@ export default function FinancialReports() {
                   borderRadius: "4px",
                   border: dataSource === "shopify" ? "2px solid #10b981" : "1px solid #ccc",
                   background: dataSource === "shopify" ? "#10b98115" : "#f5f5f5",
-                  cursor: "pointer",
+                  cursor: isShopifyConnected() ? "pointer" : "not-allowed",
                   fontWeight: dataSource === "shopify" ? "600" : "400",
                   fontSize: "12px",
                   transition: "all 0.15s",
-                  color: dataSource === "shopify" ? "#10b981" : "#666",
+                  color: dataSource === "shopify" ? "#10b981" : isShopifyConnected() ? "#666" : "#999",
+                  opacity: isShopifyConnected() ? 1 : 0.6,
                 }}
+                disabled={!isShopifyConnected()}
               >
                 Shopify
               </button>
@@ -784,21 +786,17 @@ export default function FinancialReports() {
                   borderRadius: "4px",
                   border: dataSource === "square" ? "2px solid #3b82f6" : "1px solid #ccc",
                   background: dataSource === "square" ? "#3b82f615" : "#f5f5f5",
-                  cursor: "pointer",
+                  cursor: isSquareConnected() ? "pointer" : "not-allowed",
                   fontWeight: dataSource === "square" ? "600" : "400",
                   fontSize: "12px",
                   transition: "all 0.15s",
-                  color: dataSource === "square" ? "#3b82f6" : "#666",
+                  color: dataSource === "square" ? "#3b82f6" : isSquareConnected() ? "#666" : "#999",
+                  opacity: isSquareConnected() ? 1 : 0.6,
                 }}
+                disabled={!isSquareConnected()}
               >
                 Square
               </button>
-            </div>
-          )}
-          {/* Show Square warning if only Square is connected */}
-          {isSquareConnected() && !isShopifyConnected() && (
-            <div style={{ marginRight: "12px", fontSize: "12px", fontWeight: "600", color: "#3b82f6" }}>
-              🎯 via Square POS
             </div>
           )}
           <div className="report-menu-wrapper">
