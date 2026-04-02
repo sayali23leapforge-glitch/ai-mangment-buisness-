@@ -48,6 +48,50 @@ function getSquarePaymentsFromStorage(): any[] {
   }
 }
 
+// Get transaction breakdown (completed payments, orders, failed/cancelled)
+function getTransactionBreakdown(): {
+  completedPayments: number;
+  completedOrders: number;
+  failedPayments: number;
+  cancelledOrders: number;
+  totalFailedAmount: number;
+} {
+  try {
+    const allPayments = getSquarePaymentsFromStorage();
+    const allOrders = getSquareOrdersFromStorage();
+    
+    const completedPayments = allPayments.filter((p: any) => p.status === 'COMPLETED').length;
+    const failedPayments = allPayments.filter((p: any) => p.status !== 'COMPLETED').length;
+    
+    const completedOrders = allOrders.filter((o: any) => o.state === 'COMPLETED').length;
+    const cancelledOrders = allOrders.filter((o: any) => o.state !== 'COMPLETED').length;
+    
+    const failedAmount = allPayments
+      .filter((p: any) => p.status !== 'COMPLETED')
+      .reduce((sum: number, p: any) => {
+        const amount = p.amount_money?.amount ? p.amount_money.amount / 100 : 0;
+        return sum + amount;
+      }, 0);
+    
+    return {
+      completedPayments,
+      completedOrders,
+      failedPayments,
+      cancelledOrders,
+      totalFailedAmount: failedAmount,
+    };
+  } catch (err) {
+    console.error("❌ Error getting transaction breakdown:", err);
+    return {
+      completedPayments: 0,
+      completedOrders: 0,
+      failedPayments: 0,
+      cancelledOrders: 0,
+      totalFailedAmount: 0,
+    };
+  }
+}
+
 // Get failed/cancelled transactions count from Square 
 function getFailedCancelledTransactions(): number {
   try {
@@ -787,38 +831,54 @@ export default function FinancialReports() {
         <button className={tab === "cash" ? "fr-tab active" : "fr-tab"} onClick={() => setTab("cash")}>Cash Flow Statement</button>
       </div>
 
-      {/* Failed/Cancelled Transactions Summary Container - Shows for Square Only */}
+      {/* Transactions Breakdown Section - Shows for Square Only */}
       {dataSource === "square" && (() => {
-        const failedCount = getFailedCancelledTransactions();
-        const totalFailedAmount = getTotalFailedAmount();
+        const breakdown = getTransactionBreakdown();
+        const totalTransactions = breakdown.completedPayments + breakdown.completedOrders + breakdown.failedPayments + breakdown.cancelledOrders;
         
-        return failedCount > 0 ? (
-          <div style={{
-            backgroundColor: '#2a1a1a',
-            border: '2px solid #ef4444',
-            borderRadius: '8px',
-            padding: '16px',
-            marginBottom: '20px',
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '16px'
-          }}>
-            <div>
-              <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 'bold' }}>
-                ❌ Failed/Cancelled Count
-              </div>
-              <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#ef4444' }}>
-                {failedCount}
-              </div>
+        return totalTransactions > 0 ? (
+          <div>
+            <div style={{ marginTop: "20px", marginBottom: "20px" }} />
+            
+            <div className="section-title">📊 Square Transactions Breakdown</div>
+            
+            {/* Completed Payments */}
+            <div className="fr-line small">
+              <div className="fr-left">✅ Completed Payments</div>
+              <div className="fr-right positive">{breakdown.completedPayments}</div>
             </div>
             
-            <div>
-              <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 'bold' }}>
-                Total Failed Amount
+            {/* Completed Orders */}
+            <div className="fr-line small">
+              <div className="fr-left">✅ Completed Orders</div>
+              <div className="fr-right positive">{breakdown.completedOrders}</div>
+            </div>
+            
+            {/* Failed Payments */}
+            <div className="fr-line small">
+              <div className="fr-left">❌ Failed Payments</div>
+              <div className="fr-right negative">{breakdown.failedPayments}</div>
+            </div>
+            
+            {/* Cancelled Orders */}
+            <div className="fr-line small">
+              <div className="fr-left">❌ Cancelled Orders</div>
+              <div className="fr-right negative">{breakdown.cancelledOrders}</div>
+            </div>
+            
+            {/* Total Failed Amount */}
+            {breakdown.totalFailedAmount > 0 && (
+              <div className="fr-line small" style={{ borderTop: "1px solid #444", marginTop: "8px", paddingTop: "8px" }}>
+                <div className="fr-left" style={{ color: "#ef4444" }}>💰 Total Failed Amount</div>
+                <div className="fr-right negative" style={{ color: "#ef4444", fontWeight: "bold" }}>
+                  {fmt(breakdown.totalFailedAmount)}
+                </div>
               </div>
-              <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#ef4444' }}>
-                {fmt(totalFailedAmount)}
-              </div>
+            )}
+            
+            <div className="fr-line total">
+              <div className="fr-left">Total Transactions</div>
+              <div className="fr-right">{totalTransactions}</div>
             </div>
           </div>
         ) : null;
