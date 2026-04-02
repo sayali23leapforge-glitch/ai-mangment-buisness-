@@ -122,8 +122,13 @@ export default function Dashboard() {
         if (dataSource === "square" && isSquareConnected()) {
           console.log(`\n🎯 DASHBOARD LOAD CHECK (Square):`);
           console.log(`   ✓ Square IS connected! Loading data...`);
+          console.log(`   📦 Checking localStorage...`);
+          console.log(`      squareOrders length:`, localStorage.getItem("squareOrders")?.length || 0);
+          console.log(`      squarePayments length:`, localStorage.getItem("squarePayments")?.length || 0);
           
           const squareSales = getSquareSalesFromStorage();
+          console.log(`   📊 Square sales converted from orders:`, squareSales.length, squareSales);
+          
           setProducts([]); // Square doesn't have product data like Shopify
           setSales(squareSales || []);
           
@@ -597,41 +602,45 @@ export default function Dashboard() {
             </div>
 
             <div className="system-status">
-              {/* Data Source Toggle - Only show if both are connected */}
-              {isShopifyConnected() && isSquareConnected() && (
+              {/* Data Source Toggle - Show if Square OR Shopify connected */}
+              {(isShopifyConnected() || isSquareConnected()) && (
                 <div style={{ display: "flex", gap: "4px", alignItems: "center", marginRight: "12px" }}>
-                  <button
-                    onClick={() => setDataSource("shopify")}
-                    style={{
-                      padding: "6px 12px",
-                      borderRadius: "4px",
-                      border: dataSource === "shopify" ? "2px solid #10b981" : "1px solid #ccc",
-                      background: dataSource === "shopify" ? "#10b98115" : "#f5f5f5",
-                      cursor: "pointer",
-                      fontWeight: dataSource === "shopify" ? "600" : "400",
-                      fontSize: "12px",
-                      transition: "all 0.15s",
-                      color: dataSource === "shopify" ? "#10b981" : "#666",
-                    }}
-                  >
-                    Shopify
-                  </button>
-                  <button
-                    onClick={() => setDataSource("square")}
-                    style={{
-                      padding: "6px 12px",
-                      borderRadius: "4px",
-                      border: dataSource === "square" ? "2px solid #3b82f6" : "1px solid #ccc",
-                      background: dataSource === "square" ? "#3b82f615" : "#f5f5f5",
-                      cursor: "pointer",
-                      fontWeight: dataSource === "square" ? "600" : "400",
-                      fontSize: "12px",
-                      transition: "all 0.15s",
-                      color: dataSource === "square" ? "#3b82f6" : "#666",
-                    }}
-                  >
-                    Square
-                  </button>
+                  {isShopifyConnected() && (
+                    <button
+                      onClick={() => setDataSource("shopify")}
+                      style={{
+                        padding: "6px 12px",
+                        borderRadius: "4px",
+                        border: dataSource === "shopify" ? "2px solid #10b981" : "1px solid #ccc",
+                        background: dataSource === "shopify" ? "#10b98115" : "#f5f5f5",
+                        cursor: "pointer",
+                        fontWeight: dataSource === "shopify" ? "600" : "400",
+                        fontSize: "12px",
+                        transition: "all 0.15s",
+                        color: dataSource === "shopify" ? "#10b981" : "#666",
+                      }}
+                    >
+                      Shopify
+                    </button>
+                  )}
+                  {isSquareConnected() && (
+                    <button
+                      onClick={() => setDataSource("square")}
+                      style={{
+                        padding: "6px 12px",
+                        borderRadius: "4px",
+                        border: dataSource === "square" ? "2px solid #3b82f6" : "1px solid #ccc",
+                        background: dataSource === "square" ? "#3b82f615" : "#f5f5f5",
+                        cursor: "pointer",
+                        fontWeight: dataSource === "square" ? "600" : "400",
+                        fontSize: "12px",
+                        transition: "all 0.15s",
+                        color: dataSource === "square" ? "#3b82f6" : "#666",
+                      }}
+                    >
+                      Square
+                    </button>
+                  )}
                 </div>
               )}
               <div className="status-dot"></div>
