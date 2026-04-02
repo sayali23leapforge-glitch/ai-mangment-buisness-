@@ -140,7 +140,10 @@ function getSquareSalesFromStorage(): Sale[] {
     const orders = getSquareOrdersFromStorage();
     if (!Array.isArray(orders) || orders.length === 0) return [];
 
-    return orders.map((order: any) => ({
+    // Filter to only COMPLETED orders for financial calculations
+    const completedOrders = orders.filter((order: any) => order.state === 'COMPLETED');
+
+    return completedOrders.map((order: any) => ({
       id: order.id || order.order_id || "",
       productName: order.location_name || "Square Order",
       amount: order.total_money?.amount ? order.total_money.amount / 100 : 0,

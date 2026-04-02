@@ -58,7 +58,7 @@ function isSquareConnected(): boolean {
   }
 }
 
-// Get Square orders as Sales
+// Get Square orders as Sales (COMPLETED only)
 function getSquareSalesFromStorage(): Sale[] {
   try {
     const ordersJson = localStorage.getItem("squareOrders");
@@ -73,11 +73,13 @@ function getSquareSalesFromStorage(): Sale[] {
       return [];
     }
 
-    console.log(`📦 Converting ${orderData.length} Square orders to sales format...`);
+    // Filter to only COMPLETED orders for financial calculations
+    const completedOrders = orderData.filter((order: any) => order.state === 'COMPLETED');
+    console.log(`📦 Converting ${completedOrders.length} COMPLETED Square orders to sales format (out of ${orderData.length} total)...`);
     
-    const converted = orderData.map((order: any, idx: number) => {
+    const converted = completedOrders.map((order: any, idx: number) => {
       const amount = order.total_money?.amount ? order.total_money.amount / 100 : 0;
-      console.log(`   Order ${idx + 1}: ID=${order.id}, total_money=${order.total_money}, amount=$${amount}`);
+      console.log(`   Order ${idx + 1}: ID=${order.id}, state=${order.state}, total_money=${order.total_money}, amount=$${amount}`);
       
       return {
         id: order.id || order.order_id || "",
@@ -88,7 +90,7 @@ function getSquareSalesFromStorage(): Sale[] {
       };
     });
     
-    console.log(`✅ Converted ${converted.length} orders - Total revenue: $${converted.reduce((sum, s) => sum + s.amount, 0)}`);
+    console.log(`✅ Converted ${converted.length} COMPLETED orders - Total revenue: $${converted.reduce((sum, s) => sum + s.amount, 0)}`);
     return converted;
   } catch (err) {
     console.error("❌ Error converting Square data:", err);
