@@ -42,7 +42,7 @@ class SquareService {
 
   /**
    * Sync all payments from Square
-   * Fetches recent payments and stores them in the database
+   * Fetches recent COMPLETED payments only and stores them in the database
    */
   async syncPayments(beginTime?: string, endTime?: string): Promise<SyncedPayment[]> {
     try {
@@ -54,10 +54,18 @@ class SquareService {
       const startTime = Date.now();
 
       // Fetch payments from Square
-      const payments = await squareClient.getPayments(beginTime, endTime);
+      const allPayments = await squareClient.getPayments(beginTime, endTime);
+
+      // Filter to only COMPLETED payments
+      const completedPayments = allPayments.filter((payment: any) => payment.status === 'COMPLETED');
+
+      logger.info(`📊 Filtered payments`, {
+        total_fetched: allPayments.length,
+        completed_only: completedPayments.length,
+      });
 
       // Transform and enhance payments with sync metadata
-      const syncedPayments: SyncedPayment[] = payments.map((payment: any) => ({
+      const syncedPayments: SyncedPayment[] = completedPayments.map((payment: any) => ({
         ...payment,
         synced_at: new Date().toISOString(),
       }));
