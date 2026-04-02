@@ -302,6 +302,69 @@ export const getRawSquareData = async (req: Request, res: Response): Promise<voi
 };
 
 /**
+ * GET /square/detailed-debug
+ * Detailed debug endpoint - shows ALL payment details for manual verification
+ * User can search each payment ID in Square Dashboard to verify it's real
+ */
+export const getDetailedDebug = async (req: Request, res: Response): Promise<void> => {
+  try {
+    logger.info('🔍 Fetching DETAILED Square payment data for verification...');
+
+    // Fetch fresh data from Square API
+    const payments = await squareService.syncPayments();
+    const orders = await squareService.syncOrders();
+
+    logger.info('✅ Detailed debug data fetch complete', {
+      actual_payments: payments.length,
+      actual_orders: orders.length,
+    });
+
+    // Format detailed payment info for verification
+    const paymentDetails = payments.map((p: any) => ({
+      payment_id: p.id,
+      amount_cents: p.amount_money?.amount,
+      amount_dollars: `$${(p.amount_money?.amount / 100).toFixed(2)}`,
+      status: p.status,
+      created_at: p.created_at,
+      receipt_number: p.receipt_number || 'N/A',
+      order_id: p.order_id || 'N/A',
+      // Instructions for manual verification
+      instructions: 'Search this payment_id in your Square Dashboard to verify it\'s real',
+    }));
+
+    const orderDetails = orders.map((o: any) => ({
+      order_id: o.id,
+      reference_id: o.reference_id,
+      state: o.state,
+      total_cents: o.total_money?.amount,
+      total_dollars: `$${(o.total_money?.amount / 100).toFixed(2)}`,
+      created_at: o.created_at,
+      instructions: 'Search this order_id in your Square Dashboard to verify it\'s real',
+    }));
+
+    res.json({
+      status: 'success',
+      message: 'DETAILED Square Data - Search each ID in your Square Dashboard to verify',
+      verification_instructions: 'Copy each payment_id or order_id and search it in https://squareup.com/dashboard',
+      data: {
+        total_payments: payments.length,
+        total_orders: orders.length,
+        location_id: process.env.SQUARE_LOCATION_ID,
+        timestamp: new Date().toISOString(),
+        payments: paymentDetails,
+        orders: orderDetails,
+      },
+    });
+  } catch (error) {
+    logger.error('❌ Failed to fetch detailed debug data', error);
+    res.status(500).json({
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Failed to fetch detailed debug data',
+    });
+  }
+};
+
+/**
  * GET /square/orders/:id
  * Get a specific order by ID
  */

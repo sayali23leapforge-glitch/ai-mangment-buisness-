@@ -16,6 +16,7 @@ router.get('/health', squareController.healthCheck);
 router.get('/status', squareController.getStatus);
 router.get('/debug', squareController.getDebugInfo);
 router.get('/raw-data', squareController.getRawSquareData);
+router.get('/detailed-debug', squareController.getDetailedDebug);
 
 /**
  * Connection Endpoint
