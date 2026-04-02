@@ -377,6 +377,13 @@ const Integrations = () => {
     try {
       console.log("🔄 Starting Square connection...");
       
+      // AUTOMATICALLY CLEAR OLD SQUARE DATA FIRST
+      console.log("🧹 Clearing old Square data from cache...");
+      localStorage.removeItem("squareConnected");
+      localStorage.removeItem("squareData");
+      localStorage.removeItem("squareOrders");
+      localStorage.removeItem("squarePayments");
+      
       // First, check if backend is configured
       const debugResponse = await fetch(getApiUrl("/square/debug"));
       const debugData = await debugResponse.json();
@@ -499,6 +506,11 @@ const Integrations = () => {
     try {
       console.log("🔄 Starting Square sync...");
       
+      // AUTOMATICALLY CLEAR OLD DATA BEFORE FETCHING NEW
+      console.log("🧹 Clearing old Square data from cache...");
+      localStorage.removeItem("squareOrders");
+      localStorage.removeItem("squarePayments");
+      
       const response = await fetch(getApiUrl("/square/sync"), {
         method: "POST",
         headers: {
@@ -521,7 +533,17 @@ const Integrations = () => {
           lastSync: new Date().toLocaleTimeString(),
         });
 
-        // Update localStorage with latest data
+        // Store fresh orders and payments from the response
+        if (data.data?.orders && Array.isArray(data.data.orders)) {
+          localStorage.setItem("squareOrders", JSON.stringify(data.data.orders));
+          console.log(`✅ Stored ${data.data.orders.length} fresh Square orders in localStorage`);
+        }
+        if (data.data?.payments && Array.isArray(data.data.payments)) {
+          localStorage.setItem("squarePayments", JSON.stringify(data.data.payments));
+          console.log(`✅ Stored ${data.data.payments.length} fresh Square payments in localStorage`);
+        }
+
+        // Update main Square data
         const squareDataStr = localStorage.getItem("squareData");
         if (squareDataStr) {
           try {

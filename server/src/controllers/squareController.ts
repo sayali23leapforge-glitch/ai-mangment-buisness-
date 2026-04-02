@@ -128,7 +128,7 @@ export const getOrders = async (req: Request, res: Response): Promise<void> => {
 /**
  * POST /square/sync
  * Manual trigger to sync all data from Square
- * Useful for refreshing data on demand
+ * Returns full data arrays (orders and payments) for frontend update
  */
 export const syncData = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -142,6 +142,8 @@ export const syncData = async (req: Request, res: Response): Promise<void> => {
       data: {
         payments_synced: payments.length,
         orders_synced: orders.length,
+        payments: payments,  // Return full payment data arrays
+        orders: orders,      // Return full order data arrays
         timestamp: new Date().toISOString(),
       },
     });
