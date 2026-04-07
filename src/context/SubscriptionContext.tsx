@@ -3,7 +3,7 @@ import { db } from "../config/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { useAuth } from "./AuthContext";
 
-export type PlanTier = "free" | "growth" | "pro";
+export type PlanTier = "free" | "starter" | "growth" | "pro";
 
 // Feature types
 export type FeatureName = 
@@ -38,6 +38,7 @@ interface SubscriptionContextType {
 // Feature access matrix
 const FEATURE_ACCESS: Record<PlanTier, FeatureName[]> = {
   free: [],
+  starter: ["communityHub"],
   growth: ["smartNotifications", "advancedAnalytics", "communityHub"],
   pro: ["multiCurrency", "offlineMode", "payrollIntegration", "bankIntegration", "fraudDetection", "smartNotifications", "advancedAnalytics", "communityHub"],
 };

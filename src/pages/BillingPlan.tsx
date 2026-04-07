@@ -48,7 +48,7 @@ const BillingPlan = () => {
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
   const [loading, setLoading] = useState(false);
   const [currency, setCurrency] = useState("CAD");
-  const [userPlan, setUserPlan] = useState<"free" | "growth" | "pro">("free");
+  const [userPlan, setUserPlan] = useState<"free" | "starter" | "growth" | "pro">("free");
   const [userBillingCycle, setUserBillingCycle] = useState<"monthly" | "yearly" | null>(null);
   const [subscriptionEndDate, setSubscriptionEndDate] = useState<Date | null>(null);
   const [successMessage, setSuccessMessage] = useState("");
@@ -120,10 +120,10 @@ const BillingPlan = () => {
         
         try {
           // Get the plan and billing cycle from URL
-          const upgradedPlan = searchParams.get("plan") as "growth" | "pro" | null;
+          const upgradedPlan = searchParams.get("plan") as "starter" | "growth" | "pro" | null;
           const cycle = searchParams.get("cycle") as "monthly" | "yearly" | null;
           
-          if (upgradedPlan && (upgradedPlan === "growth" || upgradedPlan === "pro") && cycle) {
+          if (upgradedPlan && (upgradedPlan === "starter" || upgradedPlan === "growth" || upgradedPlan === "pro") && cycle) {
             console.log(`💾 Updating Firestore...`);
             
             // Check if there's a pending trial from localStorage
