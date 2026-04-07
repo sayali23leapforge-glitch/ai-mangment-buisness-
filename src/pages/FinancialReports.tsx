@@ -686,8 +686,8 @@ export default function FinancialReports() {
               <button
                 type="button"
                 onClick={() => {
-                  console.log("📍 View Plans clicked from FinancialReports, navigating to /billing-plan");
-                  setTimeout(() => navigate("/billing-plan"), 0);
+                  console.log("📍 View Plans clicked from FinancialReports, reloading to /billing-plan");
+                  window.location.href = "/billing-plan";
                 }}
                 style={{ marginTop: "10px", padding: "10px 20px", backgroundColor: "#007bff", color: "white", borderRadius: "5px", textDecoration: "none", border: "none", cursor: "pointer", fontSize: "16px", fontWeight: "500" }}
               >
