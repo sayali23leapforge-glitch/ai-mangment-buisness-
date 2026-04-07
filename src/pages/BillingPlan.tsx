@@ -332,8 +332,29 @@ const BillingPlan = () => {
       // Use real Stripe integration
       const priceId = billingCycle === "monthly" ? plan.priceIdMonthly : plan.priceIdYearly;
       
+      // If no price ID configured (like Starter), just activate the plan without Stripe
       if (!priceId) {
-        throw new Error("Price ID not configured for this plan");
+        console.log(`⚠️ No Stripe price ID for ${plan.id} plan, activating without payment`);
+        const subscriptionEndDate = new Date();
+        if (billingCycle === "monthly") {
+          subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1);
+        } else {
+          subscriptionEndDate.setFullYear(subscriptionEndDate.getFullYear() + 1);
+        }
+        
+        await updateDoc(doc(db, "users", user.uid), {
+          plan: plan.id,
+          billing_cycle: billingCycle,
+          subscription_end_date: subscriptionEndDate,
+          updatedAt: new Date(),
+        });
+        
+        setUserPlan(plan.id);
+        setUserBillingCycle(billingCycle);
+        setSubscriptionEndDate(subscriptionEndDate);
+        setSuccessMessage(`✅ Plan activated! Welcome to ${plan.name}`);
+        setTimeout(() => setSuccessMessage(""), 4000);
+        return;
       }
 
       // Use local backend server on port 5000 for dev, or production endpoint
@@ -366,7 +387,10 @@ const BillingPlan = () => {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
         console.error(`❌ Server error response:`, errorData);
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        const errorMsg = response.status === 404 
+          ? "Payment system temporarily unavailable. Please try again later."
+          : errorData.error || `HTTP error! status: ${response.status}`;
+        throw new Error(errorMsg);
       }
 
       const data = await response.json();

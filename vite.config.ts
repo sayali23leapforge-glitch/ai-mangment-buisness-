@@ -9,15 +9,15 @@ export default defineConfig({
     open: true,
     proxy: {
       '/api/': {
-        target: 'http://localhost:3001',
+        target: 'http://localhost:5000',
         changeOrigin: true,
       },
       '/create-checkout-session': {
-        target: 'http://localhost:3001',
+        target: 'http://localhost:5000',
         changeOrigin: true,
       },
       '/webhook': {
-        target: 'http://localhost:3001',
+        target: 'http://localhost:5000',
         changeOrigin: true,
       },
     },
