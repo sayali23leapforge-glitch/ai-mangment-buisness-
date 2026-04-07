@@ -357,11 +357,15 @@ const BillingPlan = () => {
         return;
       }
 
-      // Use local backend server on port 5000 for dev, or production endpoint
+      // Use local backend server on port 5000 for dev, or production endpoint from env
       const isLocalDev = import.meta.env.DEV && window.location.hostname === 'localhost';
-      const serverUrl = isLocalDev ? 'http://localhost:5000' : window.location.origin;
+      const backendUrlEnv = import.meta.env.VITE_BACKEND_URL;
+      const serverUrl = isLocalDev 
+        ? 'http://localhost:5000' 
+        : backendUrlEnv || window.location.origin;
 
       console.log(`🔄 Creating checkout for ${plan.name} (${billingCycle})...`);
+      console.log(`📨 Backend URL: ${serverUrl}`);
       console.log(`📤 Sending to ${serverUrl}/create-checkout-session with:`, {
         uid: user.uid,
         priceId,
