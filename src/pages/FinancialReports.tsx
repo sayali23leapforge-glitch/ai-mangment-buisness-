@@ -682,7 +682,7 @@ export default function FinancialReports() {
               <Lock size={64} color="#999" />
               <h2>{trialExpired ? "Trial Expired - Upgrade to Continue" : "Financial Reports Require Growth Plan"}</h2>
               <p style={{ color: "#666", maxWidth: "400px" }}>{trialExpired ? "Your trial period has ended. Choose a plan to continue using financial reports." : "Access detailed financial analysis, forecasting, and comprehensive reports. Available in Growth and Pro plans."}</p>
-              <Link to="/billing" style={{ marginTop: "10px", padding: "10px 20px", backgroundColor: "#007bff", color: "white", borderRadius: "5px", textDecoration: "none" }}>
+              <Link to="/billing-plan" style={{ marginTop: "10px", padding: "10px 20px", backgroundColor: "#007bff", color: "white", borderRadius: "5px", textDecoration: "none" }}>
                 View Plans
               </Link>
             </div>
