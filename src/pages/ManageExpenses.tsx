@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Plus, Trash2, Edit2, DollarSign, TrendingDown, BarChart3, Lock } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import TopBar from "../components/TopBar";
 import Sidebar from "../components/Sidebar";
 import { useRole } from "../context/RoleContext";
@@ -22,6 +22,7 @@ export default function ManageExpenses() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { currentRole } = useRole();
   const { tier, trialExpired } = useSubscription();
+  const navigate = useNavigate();
   const [userProfile, setUserProfile] = useState<any>(null);
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -174,7 +175,7 @@ export default function ManageExpenses() {
     );
   }
 
-  if (tier === "free" || trialExpired) {
+  if (tier === "free" || tier === "starter" || trialExpired) {
     return (
       <div className="dashboard-wrapper">
         <Sidebar sidebarOpen={sidebarOpen} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
@@ -185,9 +186,12 @@ export default function ManageExpenses() {
               <Lock size={64} color="#999" />
               <h2>{trialExpired ? "Trial Expired - Upgrade to Continue" : "Expense Management Requires Growth Plan"}</h2>
               <p style={{ color: "#666", maxWidth: "400px" }}>{trialExpired ? "Your trial period has ended. Choose a plan to continue managing expenses." : "Track operating expenses and product costs. Available in Growth and Pro plans."}</p>
-              <Link to="/billing-plan" style={{ marginTop: "10px", padding: "10px 20px", backgroundColor: "#007bff", color: "white", borderRadius: "5px", textDecoration: "none" }}>
+              <button
+                onClick={() => navigate("/billing-plan")}
+                style={{ marginTop: "10px", padding: "10px 20px", backgroundColor: "#007bff", color: "white", borderRadius: "5px", textDecoration: "none", border: "none", cursor: "pointer", fontSize: "16px", fontWeight: "500" }}
+              >
                 View Plans
-              </Link>
+              </button>
             </div>
           </div>
         </main>

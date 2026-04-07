@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Sparkles, Calendar, Download, FileText, DollarSign, Lock } from "lucide-react";
 import TopBar from "../components/TopBar";
 import Sidebar from "../components/Sidebar";
@@ -43,6 +43,7 @@ export default function TaxCenter() {
   const roleContext = useRole();
   const currentRole = roleContext?.currentRole || "user";
   const location = useLocation();
+  const navigate = useNavigate();
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isBusinessRegistered, setIsBusinessRegistered] = useState(false);
   const { tier, trialExpired } = useSubscription();
@@ -232,7 +233,7 @@ export default function TaxCenter() {
   }
 
   // Check if user has access to Tax Center (Growth+ plan required)
-  if (tier === "free" || trialExpired) {
+  if (tier === "free" || tier === "starter" || trialExpired) {
     return (
       <div className="dashboard-wrapper">
         <Sidebar sidebarOpen={sidebarOpen} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
@@ -243,9 +244,12 @@ export default function TaxCenter() {
               <Lock size={64} color="#999" />
               <h2>{trialExpired ? "Trial Expired - Upgrade to Continue" : "Tax Center Requires Growth Plan"}</h2>
               <p style={{ color: "#666", maxWidth: "400px" }}>{trialExpired ? "Your trial period has ended. Choose a plan to continue using tax calculations." : "Calculate taxes automatically and manage tax obligations. Available in Growth and Pro plans."}</p>
-              <Link to="/billing-plan" style={{ marginTop: "10px", padding: "10px 20px", backgroundColor: "#007bff", color: "white", borderRadius: "5px", textDecoration: "none" }}>
+              <button
+                onClick={() => navigate("/billing-plan")}
+                style={{ marginTop: "10px", padding: "10px 20px", backgroundColor: "#007bff", color: "white", borderRadius: "5px", textDecoration: "none", border: "none", cursor: "pointer", fontSize: "16px", fontWeight: "500" }}
+              >
                 View Plans
-              </Link>
+              </button>
             </div>
           </div>
         </main>

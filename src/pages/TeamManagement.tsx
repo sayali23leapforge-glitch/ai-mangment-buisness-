@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Users2, CheckCircle, Users, Lock, Search, Trash2, Eye, EyeOff, Wallet, BarChart2, LockIcon } from "lucide-react";
 import TopBar from "../components/TopBar";
 import Sidebar from "../components/Sidebar";
@@ -21,6 +21,7 @@ const TeamManagement = () => {
   const { user } = useAuth();
   const { currentRole } = useRole();
   const { tier, trialExpired } = useSubscription();
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [_selectedRole, setSelectedRole] = useState("Owner (Full Access)");
@@ -246,7 +247,7 @@ const TeamManagement = () => {
   );
 
   // Check if user has access to Team Management (Growth+ plan required)
-  if (tier === "free" || trialExpired) {
+  if (tier === "free" || tier === "starter" || trialExpired) {
     return (
       <div className="dashboard-wrapper">
         <Sidebar sidebarOpen={sidebarOpen} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
@@ -257,9 +258,12 @@ const TeamManagement = () => {
               <LockIcon size={64} color="#999" />
               <h2>{trialExpired ? "Trial Expired - Upgrade to Continue" : "Team Management Requires Growth Plan"}</h2>
               <p style={{ color: "#666", maxWidth: "400px" }}>{trialExpired ? "Your trial period has ended. Choose a plan to continue managing team members." : "Add team members and manage access. Growth plan supports up to 5 team members, Pro plan supports unlimited members."}</p>
-              <Link to="/billing-plan" style={{ marginTop: "10px", padding: "10px 20px", backgroundColor: "#007bff", color: "white", borderRadius: "5px", textDecoration: "none" }}>
+              <button
+                onClick={() => navigate("/billing-plan")}
+                style={{ marginTop: "10px", padding: "10px 20px", backgroundColor: "#007bff", color: "white", borderRadius: "5px", textDecoration: "none", border: "none", cursor: "pointer", fontSize: "16px", fontWeight: "500" }}
+              >
                 View Plans
-              </Link>
+              </button>
             </div>
           </div>
         </main>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Sparkles, TrendingUp, BarChart3, Lightbulb, Lock } from "lucide-react";
 import TopBar from "../components/TopBar";
 import Sidebar from "../components/Sidebar";
@@ -30,6 +30,7 @@ export default function AIInsights() {
   const roleContext = useRole();
   const currentRole = roleContext?.currentRole || "user";
   const { tier, trialExpired } = useSubscription();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const storedProfile = localStorage.getItem("userProfile");
@@ -106,7 +107,7 @@ export default function AIInsights() {
     };
   }, [user, forceRefresh]);
   // Check if user has access to AI Insights (Growth+ plan required)
-  if (tier === "free" || trialExpired) {
+  if (tier === "free" || tier === "starter" || trialExpired) {
     return (
       <div className="dashboard-wrapper">
         <Sidebar sidebarOpen={sidebarOpen} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
@@ -121,9 +122,12 @@ export default function AIInsights() {
                   ? "Your trial period has ended. Choose a plan to continue using advanced AI-powered insights." 
                   : "Get advanced AI-powered insights into your business. Available in Growth and Pro plans."}
               </p>
-              <Link to="/billing-plan" style={{ marginTop: "10px", padding: "10px 20px", backgroundColor: "#007bff", color: "white", borderRadius: "5px", textDecoration: "none" }}>
+              <button
+                onClick={() => navigate("/billing-plan")}
+                style={{ marginTop: "10px", padding: "10px 20px", backgroundColor: "#007bff", color: "white", borderRadius: "5px", textDecoration: "none", border: "none", cursor: "pointer", fontSize: "16px", fontWeight: "500" }}
+              >
                 View Plans
-              </Link>
+              </button>
             </div>
           </div>
         </main>
