@@ -216,6 +216,30 @@ const BillingPlan = () => {
       upgradesTo: "starter",
     },
     {
+      id: "starter",
+      name: "Starter",
+      monthlyPrice: 15.99,
+      yearlyPrice: 159.99,
+      description: "Starter plan for growing businesses",
+      trialDays: 0,
+      trialText: "No trial",
+      features: [
+        "✓ Everything in Free Trial",
+        "✓ Basic inventory management",
+        "✓ Simple sales dashboards",
+        "✓ Sales trend overview",
+        "✓ Basic low-stock alerts",
+        "✓ Simple report generation",
+        "✓ Customer order tracking",
+        "✓ 24/7 email support",
+      ],
+      button: "Upgrade to Starter",
+      buttonClass: "primary",
+      priceIdMonthly: "",
+      priceIdYearly: "",
+      autoSubscribe: false,
+    },
+    {
       id: "growth",
       name: "Growth",
       monthlyPrice: 19.99,
@@ -284,12 +308,12 @@ const BillingPlan = () => {
     try {
       // Handle free trial for Free Trial plan
       if (plan.id === "free") {
-        // Update to growth plan with 14-day trial
+        // Update to starter plan with 14-day trial
         const trialEndDate = new Date();
         trialEndDate.setDate(trialEndDate.getDate() + 14);
         
         await updateDoc(doc(db, "users", user.uid), {
-          plan: "growth",
+          plan: "starter",
           billing_cycle: "monthly",
           subscription_end_date: trialEndDate,
           trial_active: true,
@@ -297,10 +321,10 @@ const BillingPlan = () => {
           updatedAt: new Date(),
         });
         
-        setUserPlan("growth");
+        setUserPlan("starter");
         setUserBillingCycle("monthly");
         setSubscriptionEndDate(trialEndDate);
-        setSuccessMessage("✅ Free trial started! You have 14 days to experience Growth features.");
+        setSuccessMessage("✅ Free trial started! You have 14 days to experience Starter features.");
         setTimeout(() => setSuccessMessage(""), 4000);
         return;
       }
