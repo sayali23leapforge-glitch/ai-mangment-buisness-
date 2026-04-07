@@ -516,8 +516,9 @@ const BillingPlan = () => {
                     <span className="currency">{currency === "USD" ? "$" : currency}</span>
                     <span className="amount">
                       {(() => {
-                        const priceUSD = billingCycle === "monthly" ? plan.monthlyPrice : plan.yearlyPrice;
-                        const convertedPrice = currency === "USD" ? priceUSD : convertCurrency(priceUSD, "USD", currency);
+                        const priceCAD = billingCycle === "monthly" ? plan.monthlyPrice : plan.yearlyPrice;
+                        // Prices are stored in CAD, convert to other currencies if needed
+                        const convertedPrice = currency === "CAD" ? priceCAD : convertCurrency(priceCAD, "CAD", currency);
                         return convertedPrice.toFixed(2);
                       })()}
                     </span>
