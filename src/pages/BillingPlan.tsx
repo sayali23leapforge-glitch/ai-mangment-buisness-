@@ -47,7 +47,7 @@ const BillingPlan = () => {
   const [_selectedRole, setSelectedRole] = useState("Owner (Full Access)");
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
   const [loading, setLoading] = useState(false);
-  const [currency, setCurrency] = useState("USD");
+  const [currency, setCurrency] = useState("CAD");
   const [userPlan, setUserPlan] = useState<"free" | "growth" | "pro">("free");
   const [userBillingCycle, setUserBillingCycle] = useState<"monthly" | "yearly" | null>(null);
   const [subscriptionEndDate, setSubscriptionEndDate] = useState<Date | null>(null);
