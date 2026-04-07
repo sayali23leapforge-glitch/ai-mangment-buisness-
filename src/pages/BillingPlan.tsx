@@ -222,7 +222,7 @@ const BillingPlan = () => {
       yearlyPrice: 159.99,
       description: "Starter plan for growing businesses",
       trialDays: 0,
-      trialText: "No trial",
+      trialText: "Coming Soon",
       features: [
         "✓ Everything in Free Trial",
         "✓ Basic inventory management",
@@ -233,11 +233,12 @@ const BillingPlan = () => {
         "✓ Customer order tracking",
         "✓ 24/7 email support",
       ],
-      button: "Upgrade to Starter",
+      button: "Coming Soon",
       buttonClass: "primary",
       priceIdMonthly: "",
       priceIdYearly: "",
       autoSubscribe: false,
+      notAvailable: true, // Mark as not available
     },
     {
       id: "growth",
@@ -536,6 +537,7 @@ const BillingPlan = () => {
                 >
                   {plan.isPopular && <div className="popular-badge">Most Popular</div>}
                   {isCurrentPlan && <div className="active-badge">✓ Active</div>}
+                  {plan.notAvailable && <div style={{backgroundColor: "#fbbf24", color: "#78350f", padding: "4px 12px", borderRadius: "20px", fontSize: "12px", fontWeight: "600", display: "inline-block", marginBottom: "8px"}}>Coming Soon</div>}
 
                   <div className="plan-header">
                     <h2 className="plan-name">{plan.name}</h2>
@@ -564,7 +566,7 @@ const BillingPlan = () => {
                   <button
                     className={`plan-button ${plan.buttonClass} ${isCurrentPlan ? "current-plan" : ""}`}
                     onClick={() => handleUpgrade(plan)}
-                    disabled={plan.id === "free" || isCurrentPlan || loading}
+                    disabled={plan.id === "free" || isCurrentPlan || loading || plan.notAvailable}
                   >
                     {isCurrentPlan ? "✓ Current Plan" : loading ? "Processing..." : plan.button}
                   </button>
