@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend, PieChart, Pie } from "recharts";
 import { AlertCircle, Lock } from "lucide-react";
 import TopBar from "../components/TopBar";
@@ -288,6 +288,7 @@ export default function FinancialReports() {
   const currentRole = roleContext?.currentRole || "user";
   const { tier, trialExpired } = useSubscription();
   const location = useLocation();
+  const navigate = useNavigate();
   const { dataSource, setDataSource } = useDataSource(); // Shared toggle between Financial Reports and Dashboard
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [tab, setTab] = useState<"income" | "balance" | "cash">("income");
@@ -671,7 +672,7 @@ export default function FinancialReports() {
   }
 
   // Check if user has access to advanced Financial Reports (Growth+ for advanced features)
-  if (tier === "free" || trialExpired) {
+  if (tier === "free" || tier === "starter" || trialExpired) {
     return (
       <div className="dashboard-wrapper">
         <Sidebar sidebarOpen={sidebarOpen} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
@@ -682,9 +683,12 @@ export default function FinancialReports() {
               <Lock size={64} color="#999" />
               <h2>{trialExpired ? "Trial Expired - Upgrade to Continue" : "Financial Reports Require Growth Plan"}</h2>
               <p style={{ color: "#666", maxWidth: "400px" }}>{trialExpired ? "Your trial period has ended. Choose a plan to continue using financial reports." : "Access detailed financial analysis, forecasting, and comprehensive reports. Available in Growth and Pro plans."}</p>
-              <Link to="/billing-plan" style={{ marginTop: "10px", padding: "10px 20px", backgroundColor: "#007bff", color: "white", borderRadius: "5px", textDecoration: "none" }}>
+              <button
+                onClick={() => navigate("/billing-plan")}
+                style={{ marginTop: "10px", padding: "10px 20px", backgroundColor: "#007bff", color: "white", borderRadius: "5px", textDecoration: "none", border: "none", cursor: "pointer", fontSize: "16px", fontWeight: "500" }}
+              >
                 View Plans
-              </Link>
+              </button>
             </div>
           </div>
         </main>
