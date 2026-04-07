@@ -524,16 +524,18 @@ const BillingPlan = () => {
             <div className="plans-grid">
               {plans.map((plan) => {
                 // Check if this plan card is the active one
-                // Only show as active if userBillingCycle matches the current billingCycle
-                const isActive = plan.id !== "free" && userPlan === plan.id && userBillingCycle === billingCycle;
+                // Only show as active if EXACTLY the same plan with same billing cycle
+                const isActive = plan.id === userPlan && userBillingCycle === billingCycle;
+                // Can only show as active if it's not free plan
+                const isCurrentPlan = plan.id !== "free" && isActive;
                 
                 return (
                 <div
                   key={plan.id}
-                  className={`plan-card ${plan.isPopular ? "popular" : ""} ${isActive ? "active" : ""}`}
+                  className={`plan-card ${plan.isPopular ? "popular" : ""} ${isCurrentPlan ? "active" : ""}`}
                 >
                   {plan.isPopular && <div className="popular-badge">Most Popular</div>}
-                  {isActive && <div className="active-badge">✓ Active</div>}
+                  {isCurrentPlan && <div className="active-badge">✓ Active</div>}
 
                   <div className="plan-header">
                     <h2 className="plan-name">{plan.name}</h2>
@@ -560,11 +562,11 @@ const BillingPlan = () => {
                   )}
 
                   <button
-                    className={`plan-button ${plan.buttonClass} ${isActive ? "current-plan" : ""}`}
+                    className={`plan-button ${plan.buttonClass} ${isCurrentPlan ? "current-plan" : ""}`}
                     onClick={() => handleUpgrade(plan)}
-                    disabled={plan.id === "free" || isActive || loading}
+                    disabled={plan.id === "free" || isCurrentPlan || loading}
                   >
-                    {isActive ? "✓ Current Plan" : loading ? "Processing..." : plan.button}
+                    {isCurrentPlan ? "✓ Current Plan" : loading ? "Processing..." : plan.button}
                   </button>
 
                   <div className="features-divider"></div>
