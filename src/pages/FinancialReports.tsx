@@ -684,7 +684,11 @@ export default function FinancialReports() {
               <h2>{trialExpired ? "Trial Expired - Upgrade to Continue" : "Financial Reports Require Growth Plan"}</h2>
               <p style={{ color: "#666", maxWidth: "400px" }}>{trialExpired ? "Your trial period has ended. Choose a plan to continue using financial reports." : "Access detailed financial analysis, forecasting, and comprehensive reports. Available in Growth and Pro plans."}</p>
               <button
-                onClick={() => navigate("/billing-plan")}
+                type="button"
+                onClick={() => {
+                  console.log("📍 View Plans clicked from FinancialReports, navigating to /billing-plan");
+                  setTimeout(() => navigate("/billing-plan"), 0);
+                }}
                 style={{ marginTop: "10px", padding: "10px 20px", backgroundColor: "#007bff", color: "white", borderRadius: "5px", textDecoration: "none", border: "none", cursor: "pointer", fontSize: "16px", fontWeight: "500" }}
               >
                 View Plans
