@@ -102,6 +102,11 @@ app.use(cors({
 // Body parser middleware - important for webhook and large image uploads
 app.use(express.json({ limit: "50mb" })); // Allow up to 50MB for base64 images
 
+// DIAGNOSTIC: Ultra-simple test endpoint
+app.get("/api-test", (req, res) => {
+  res.status(200).send("✅ EXPRESS STRIPE SERVER IS RUNNING - API ROUTES ARE WORKING");
+});
+
 // Store raw body for webhook verification
 app.use((req, res, next) => {
   if (req.path === "/webhook") {
@@ -124,8 +129,9 @@ app.get("/health", (req, res) => {
   res.json({ status: "Server is running" });
 });
 
-// DIAGNOSTIC: Prove we're running the STRIPE server, not Square
-app.get("/server-identity", (req, res) => {
+// DIAGNOSTIC: POST endpoint - prove we're running the STRIPE server, not Square
+// Using POST instead of GET to avoid being caught by static middleware
+app.post("/server-identity", (req, res) => {
   res.json({ 
     server: "STRIPE-EXPRESS-BILLING-SERVER",
     timestamp: new Date().toISOString(),
