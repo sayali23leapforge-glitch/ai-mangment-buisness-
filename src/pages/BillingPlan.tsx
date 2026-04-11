@@ -353,23 +353,37 @@ const BillingPlan = () => {
         return;
       }
 
-      // Use local backend server on port 5000 for dev, or production endpoint from env
-      const isLocalDev = import.meta.env.DEV && window.location.hostname === 'localhost';
+      // Determine backend URL - prioritize env var, fallback to current origin
       const backendUrlEnv = import.meta.env.VITE_BACKEND_URL;
-      const serverUrl = isLocalDev 
-        ? 'http://localhost:5000' 
-        : backendUrlEnv || window.location.origin;
+      const isDevMode = import.meta.env.DEV;
+      const isTrueLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      
+      let serverUrl;
+      if (isDevMode && isTrueLocalhost) {
+        // Local dev: use localhost:5000
+        serverUrl = 'http://localhost:5000';
+      } else if (backendUrlEnv && backendUrlEnv.trim()) {
+        // Production: use VITE_BACKEND_URL from env
+        serverUrl = backendUrlEnv.trim();
+      } else {
+        // Fallback: use current origin (same domain)
+        serverUrl = window.location.origin;
+      }
 
       console.log(`🔄 Creating checkout for ${plan.name} (${billingCycle})...`);
+      console.log(`📊 Environment: dev=${isDevMode}, localhost=${isTrueLocalhost}`);
       console.log(`📨 Backend URL: ${serverUrl}`);
-      console.log(`📤 Sending to ${serverUrl}/create-checkout-session with:`, {
+      console.log(`📨 VITE_BACKEND_URL env: ${backendUrlEnv || 'NOT SET'}`);
+
+      const checkoutUrl = `${serverUrl}/create-checkout-session`;
+      console.log(`📤 [PRODUCTION] Sending POST to: ${checkoutUrl}`);
+      console.log(`📋 Request payload:`, {
         uid: user.uid,
         priceId,
         billingCycle,
         plan: plan.id,
       });
-      
-      const response = await fetch(`${serverUrl}/create-checkout-session`, {
+      const response = await fetch(checkoutUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -382,14 +396,27 @@ const BillingPlan = () => {
         }),
       });
 
-      console.log(`📨 Response status: ${response.status}`);
+      console.log(`✅ [PRODUCTION] Response status received: ${response.status}`);
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
-        console.error(`❌ Server error response:`, errorData);
-        const errorMsg = response.status === 404 
-          ? "Payment system temporarily unavailable. Please try again later."
-          : errorData.error || `HTTP error! status: ${response.status}`;
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch (e) {
+          errorData = { error: `HTTP ${response.status}`, details: `Failed to parse error response` };
+        }
+        console.error(`❌ [PRODUCTION] Server error response:`, { status: response.status, error: errorData, url: checkoutUrl });
+        
+        let errorMsg = "Payment system error";
+        if (response.status === 404) {
+          errorMsg = `Checkout endpoint not found (404). Backend URL may be incorrect: ${serverUrl}/create-checkout-session`;
+        } else if (response.status === 503) {
+          errorMsg = `Payment system not configured: ${errorData.details || errorData.error}`;
+        } else if (response.status === 500) {
+          errorMsg = `Server error: ${errorData.error || 'Unknown error'}`;
+        } else {
+          errorMsg = errorData.error || `HTTP error! status: ${response.status}`;
+        }
         throw new Error(errorMsg);
       }
 

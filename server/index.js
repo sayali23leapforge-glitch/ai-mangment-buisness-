@@ -54,13 +54,34 @@ const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 let stripeClient;
 
 if (!STRIPE_SECRET_KEY) {
-  console.warn("⚠️ WARNING: Stripe Secret Key is not configured!");
-  console.warn("📝 Payment processing will fail until STRIPE_SECRET_KEY is set in environment");
+  console.error("\n❌ CRITICAL: Stripe Secret Key is NOT configured!");
+  console.error("📝 Payment processing WILL FAIL until STRIPE_SECRET_KEY is set in Render environment");
+  console.error("🔧 Action: Set STRIPE_SECRET_KEY in Render Dashboard → Environment\n");
   stripeClient = null;
 } else {
-  stripeClient = stripe(STRIPE_SECRET_KEY);
-  console.log("✅ Stripe is configured and ready!");
-  console.log(`🔑 Using Stripe API key: ${STRIPE_SECRET_KEY.substring(0, 20)}...`);
+  const keyStart = STRIPE_SECRET_KEY.substring(0, 7);
+  const keyEnd = STRIPE_SECRET_KEY.substring(STRIPE_SECRET_KEY.length - 4);
+  console.log("\n✅ Stripe is configured and ready!");
+  console.log(`🔑 Using Stripe API key: ${keyStart}...${keyEnd} (starts with 'sk_live' or 'sk_test')`);
+}
+
+// Check other critical env variables
+const CLIENT_DOMAIN = process.env.CLIENT_DOMAIN;
+const NODE_ENV = process.env.NODE_ENV;
+console.log(`\n🌍 Environment Config:`);
+console.log(`   NODE_ENV: ${NODE_ENV}`);
+console.log(`   PORT: ${PORT}`);
+console.log(`   CLIENT_DOMAIN: ${CLIENT_DOMAIN || 'NOT SET (will use req.headers.origin)'}`);
+console.log(`   Stripe Configured: ${!!STRIPE_SECRET_KEY ? 'YES' : 'NO'}\n`);
+
+// Initialize Stripe client (only if key exists)
+if (STRIPE_SECRET_KEY) {
+  try {
+    stripeClient = stripe(STRIPE_SECRET_KEY);
+  } catch (err) {
+    console.error(`❌ Failed to initialize Stripe: ${err.message}`);
+    stripeClient = null;
+  }
 }
 
 // Middleware
@@ -109,6 +130,19 @@ app.get("/api/integrations/access", async (req, res) => {
     allowed: true,
     message: "Integrations access granted",
     tier: "growth" 
+  });
+});
+
+// Diagnostic endpoint - verify checkout route is accessible
+app.get("/health/checkout", async (req, res) => {
+  res.json({
+    status: "OK",
+    endpoint: "/create-checkout-session",
+    method: "POST",
+    stripeConfigured: !!STRIPE_SECRET_KEY,
+    environment: process.env.NODE_ENV,
+    port: PORT,
+    message: "Checkout endpoint is registered and accessible. Send POST request to /create-checkout-session"
   });
 });
 
@@ -451,19 +485,25 @@ app.post("/api/shopify/inventory", async (req, res) => {
 
 // Create checkout session
 app.post("/create-checkout-session", async (req, res) => {
+  const requestId = `REQ-${Date.now()}`;
   try {
     // Check if Stripe is configured
     if (!stripeClient || !STRIPE_SECRET_KEY) {
-      console.error("❌ Stripe not configured");
+      console.error(`[${requestId}] ❌ Stripe not configured - secret key missing`);
       return res.status(503).json({
         error: "Payment system not configured. Please contact support.",
-        details: "STRIPE_SECRET_KEY not set in environment"
+        details: "STRIPE_SECRET_KEY not set in environment",
+        requestId
       });
     }
 
     const { uid, priceId, billingCycle, plan } = req.body;
-
-    console.log(`📍 Checkout request received:`, { uid, priceId, billingCycle, plan });
+    const origin = req.headers.origin;
+    
+    console.log(`\n[${requestId}] 📍 Checkout session request received`);
+    console.log(`   Origin: ${origin}`);
+    console.log(`   Payload: uid=${uid}, priceId=${priceId}, billingCycle=${billingCycle}, plan=${plan}`);
+    console.log(`   Stripe Key Status: ${STRIPE_SECRET_KEY ? 'CONFIGURED' : 'MISSING'}\n`);
 
     if (!uid || !priceId || !billingCycle) {
       console.warn("❌ Missing fields in request");
@@ -472,7 +512,7 @@ app.post("/create-checkout-session", async (req, res) => {
       });
     }
 
-    console.log(`💳 Using STRIPE (Test Mode for localhost, Live Mode for production)...`);
+    console.log(`[${requestId}] 💳 Creating Stripe checkout session...`);
     
     let customerEmail = "customer@example.com";
 
@@ -490,20 +530,16 @@ app.post("/create-checkout-session", async (req, res) => {
     }
 
     // Get the origin from request headers, fallback to CLIENT_DOMAIN env var, or localhost for dev
-    const origin = req.headers.origin || process.env.CLIENT_DOMAIN || "http://localhost:3000";
-    
-    // Generate success and cancel URLs
+    // NOTE: 'origin' was already declared at line 501, reusing it
     const successUrl = `${origin}/billing-plan?success=true&plan=${plan || extractPlanFromPrice(priceId)}&cycle=${billingCycle}`;
     const cancelUrl = `${origin}/billing-plan`;
 
-    console.log(`📝 Creating Stripe checkout:`, {
-      uid,
-      email: customerEmail,
-      priceId,
-      billingCycle,
-      successUrl,
-      cancelUrl,
-    });
+    console.log(`[${requestId}] 📝 Session config:`);
+    console.log(`   Customer Email: ${customerEmail}`);
+    console.log(`   Price ID: ${priceId}`);
+    console.log(`   Billing Cycle: ${billingCycle}`);
+    console.log(`   Success URL: ${successUrl}`);
+    console.log(`   Cancel URL: ${cancelUrl}`);
 
     // Validate price ID format
     if (!priceId.startsWith("price_")) {
@@ -574,25 +610,23 @@ app.post("/create-checkout-session", async (req, res) => {
 
       const session = await stripeClient.checkout.sessions.create(sessionParams);
 
-      console.log(`✅ Stripe session created:`, {
-        sessionId: session.id,
-        url: session.url,
-        customerId,
-      });
+      console.log(`[${requestId}] ✅ Stripe session created successfully`);
+      console.log(`   Session ID: ${session.id}`);
+      console.log(`   Customer ID: ${customerId}`);
+      console.log(`   URL: ${session.url}\n`);
 
       res.json({ 
         sessionUrl: session.url,
         sessionId: session.id,
         isDemoMode: false,
+        requestId
       });
     } catch (stripeError) {
-      console.error("❌ STRIPE ERROR - FULL DETAILS:");
-      console.error("Message:", stripeError.message);
-      console.error("Type:", stripeError.type);
-      console.error("Status Code:", stripeError.statusCode);
-      console.error("Request ID:", stripeError.requestId);
-      console.error("Param:", stripeError.param);
-      console.error("Raw Error:", stripeError);
+      console.error(`[${requestId}] ❌ STRIPE ERROR - FULL DETAILS:`);
+      console.error("   Message:", stripeError.message);
+      console.error("   Type:", stripeError.type);
+      console.error("   Status Code:", stripeError.statusCode);
+      console.error("   Param:", stripeError.param);
 
       let errorMsg = "Stripe Error: ";
       let statusCode = 500;
@@ -611,19 +645,21 @@ app.post("/create-checkout-session", async (req, res) => {
         errorMsg += stripeError.message;
       }
 
-      console.log(`📤 Sending error response: ${statusCode} - ${errorMsg}`);
+      console.log(`[${requestId}] 📤 Sending error response: ${statusCode}\n`);
 
       res.status(statusCode).json({ 
         error: errorMsg,
         stripeErrorMessage: stripeError.message,
         stripeErrorType: stripeError.type,
         priceIdTested: priceId,
+        requestId
       });
     }
   } catch (error) {
-    console.error("❌ Checkout session error:", error);
+    console.error(`[${requestId}] ❌ Checkout session error:`, error.message);
     res.status(500).json({
       error: error.message || "Failed to create checkout session",
+      requestId
     });
   }
 });
@@ -719,9 +755,21 @@ app.post("/webhook", async (req, res) => {
 
 // Serve static files from the React app BUILD (before fallback)
 const distPath = path.join(__dirname, "../dist");
-console.log(`📁 Serving static files from: ${distPath}`);
-console.log(`📁 Path exists: ${require("fs").existsSync(distPath)}`);
-app.use(express.static(distPath));
+const distExists = require("fs").existsSync(distPath);
+const indexHtmlExists = distExists && require("fs").existsSync(path.join(distPath, "index.html"));
+
+console.log(`\n📁 Static File Configuration:`);
+console.log(`   Dist Path: ${distPath}`);
+console.log(`   Dist Exists: ${distExists ? 'YES' : 'NO'}`);
+console.log(`   index.html Exists: ${indexHtmlExists ? 'YES' : 'NO'}\n`);
+
+if (distExists) {
+  app.use(express.static(distPath));
+} else {
+  console.warn(`⚠️  WARNING: dist/ folder not found. React app may not be built correctly.`);
+  console.warn(`   Expected at: ${distPath}`);
+  console.warn(`   Run 'npm run build' from root to create it.\n`);
+}
 
 // Error handling middleware (catches any thrown errors)
 app.use((err, req, res, next) => {
@@ -735,10 +783,17 @@ app.use((err, req, res, next) => {
 // Serve React app for all unmatched routes (must be LAST)
 app.get("*", (req, res) => {
   const indexPath = path.join(distPath, "index.html");
-  console.log(`📄 Serving React app from: ${indexPath}`);
+  console.log(`[${Date.now()}] 📄 Serving React app: ${req.path} → ${indexPath}`);
   if (require("fs").existsSync(indexPath)) {
     res.sendFile(indexPath);
   } else {
-    res.status(404).json({ error: "React app not built. Run: npm run build" });
+    console.error(`❌ React app not found at ${indexPath}`);
+    res.status(404).json({ 
+      error: "React app not built.",
+      details: `dist/index.html not found at ${indexPath}`,
+      action: "Run 'npm run build' from root",
+      distPath: distPath,
+      distExists: require("fs").existsSync(distPath)
+    });
   }
 });

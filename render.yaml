@@ -53,10 +53,11 @@ services:
         sync: false
       - key: SQUARE_ENVIRONMENT
         value: production
-      # Frontend configuration
+      # Frontend configuration  
+      # IMPORTANT: If using custom domain (nayance.com), update these to match
       - key: VITE_API_URL
-        value: https://ai-mangment-buisness.onrender.com
+        value: https://nayance.com
       - key: VITE_BACKEND_URL
-        value: https://ai-mangment-buisness.onrender.com
+        value: https://nayance.com
       - key: CLIENT_DOMAIN
-        value: https://ai-mangment-buisness.onrender.com
+        value: https://nayance.com
