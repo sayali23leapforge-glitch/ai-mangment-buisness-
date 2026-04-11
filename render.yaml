@@ -2,8 +2,8 @@ services:
   - type: web
     name: ai-business-management
     env: node
-    buildCommand: npm ci --include=dev && npm run build && cd server && npm ci --include=dev && npm run square:build
-    startCommand: cd server && npm run square:start
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: cd server && npm ci --include=dev && npm start
     envVars:
       - key: NODE_ENV
         value: production
@@ -55,6 +55,8 @@ services:
         value: production
       # Frontend configuration
       - key: VITE_API_URL
+        value: https://ai-mangment-buisness.onrender.com
+      - key: VITE_BACKEND_URL
         value: https://ai-mangment-buisness.onrender.com
       - key: CLIENT_DOMAIN
         value: https://ai-mangment-buisness.onrender.com
