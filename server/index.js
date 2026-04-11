@@ -29,14 +29,15 @@ const server = app.listen(PORT, () => {
 
 // Stripe initialization
 // Uses env key in production; placeholder fallback for local boot without exposing secrets
-const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "sk_test_placeholder";
-const stripeClient = stripe(STRIPE_SECRET_KEY);
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
+let stripeClient;
 
-// Verify Stripe is configured
 if (!STRIPE_SECRET_KEY) {
   console.warn("⚠️ WARNING: Stripe Secret Key is not configured!");
-  console.warn("📝 Using test key from code");
+  console.warn("📝 Payment processing will fail until STRIPE_SECRET_KEY is set in environment");
+  stripeClient = null;
 } else {
+  stripeClient = stripe(STRIPE_SECRET_KEY);
   console.log("✅ Stripe is configured and ready!");
   console.log(`🔑 Using Stripe API key: ${STRIPE_SECRET_KEY.substring(0, 20)}...`);
 }
@@ -127,6 +128,17 @@ app.get("/health", (req, res) => {
 
 app.post("/health", (req, res) => {
   res.json({ status: "ok", received: "POST", timestamp: new Date().toISOString() });
+});
+
+app.get("/api-status", (req, res) => {
+  res.json({ 
+    status: "ok",
+    message: "Payment API is running",
+    port: PORT,
+    nodeEnv: process.env.NODE_ENV,
+    stripeConfigured: !!STRIPE_SECRET_KEY,
+    timestamp: new Date().toISOString()
+  });
 });
 
 // QuickBooks routes
@@ -419,6 +431,15 @@ app.post("/api/shopify/inventory", async (req, res) => {
 // Create checkout session
 app.post("/create-checkout-session", async (req, res) => {
   try {
+    // Check if Stripe is configured
+    if (!stripeClient || !STRIPE_SECRET_KEY) {
+      console.error("❌ Stripe not configured");
+      return res.status(503).json({
+        error: "Payment system not configured. Please contact support.",
+        details: "STRIPE_SECRET_KEY not set in environment"
+      });
+    }
+
     const { uid, priceId, billingCycle, plan } = req.body;
 
     console.log(`📍 Checkout request received:`, { uid, priceId, billingCycle, plan });
