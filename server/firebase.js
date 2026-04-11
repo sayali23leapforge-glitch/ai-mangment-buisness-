@@ -65,14 +65,20 @@ if (!admin.apps.length) {
       throw new Error("FIREBASE_SERVICE_ACCOUNT is invalid (use JSON string or valid file path)");
     }
   } else {
-    throw new Error("FIREBASE_SERVICE_ACCOUNT is missing");
+    console.warn("⚠️ FIREBASE_SERVICE_ACCOUNT not set - using credential fallback");
+    // Use a fallback that won't initialize Firestore
+    credential = null;
   }
   
-  admin.initializeApp({
-    credential: credential,
-  });
-  console.log("✅ Firebase Admin SDK initialized");
+  if (credential) {
+    admin.initializeApp({
+      credential: credential,
+    });
+    console.log("✅ Firebase Admin SDK initialized");
+  } else {
+    console.warn("⚠️ Firebase Admin SDK not initialized - payments will work without Firebase integration");
+  }
 }
 
-const db = admin.firestore();
+const db = admin.apps.length > 0 ? admin.firestore() : null;
 module.exports = { admin, db };
