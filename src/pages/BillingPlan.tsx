@@ -1,14 +1,12 @@
 import { useState, useEffect } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import { Check, Lock, AlertCircle } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
+import { Check, AlertCircle } from "lucide-react";
 import TopBar from "../components/TopBar";
 import Sidebar from "../components/Sidebar";
 import { useAuth } from "../context/AuthContext";
 import { useSubscription } from "../context/SubscriptionContext";
 import { useRole } from "../context/RoleContext";
-import { hasPermission } from "../utils/rolePermissions";
-import { isMenuFeatureAvailable, getUpgradePlanForFeature } from "../utils/stripeUtils";
-import { convertCurrency, formatCurrency } from "../utils/multiCurrency";
+import { convertCurrency } from "../utils/multiCurrency";
 import { db } from "../config/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import "../styles/BillingPlan.css";
@@ -36,15 +34,13 @@ const createMockCheckoutSession = async (
 // Removed ModalState - using real Stripe checkout
 
 const BillingPlan = () => {
-  const roleContext = useRole();
-  const currentRole = roleContext?.currentRole || "user";
+
   const { user } = useAuth();
   const { trialExpired } = useSubscription();
   const [searchParams] = useSearchParams();
   
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);
-  const [_selectedRole, setSelectedRole] = useState("Owner (Full Access)");
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
   const [loading, setLoading] = useState(false);
   const [currency, setCurrency] = useState("CAD");
@@ -220,9 +216,9 @@ const BillingPlan = () => {
       name: "Starter",
       monthlyPrice: 15.99,
       yearlyPrice: 159.99,
-      description: "Starter plan for growing businesses",
-      trialDays: 0,
-      trialText: "Coming Soon",
+      description: "2 weeks free trial, then $15.99/month",
+      trialDays: 14,
+      trialText: "14-day free trial",
       features: [
         "✓ Everything in Free Trial",
         "✓ Basic inventory management",
@@ -233,12 +229,11 @@ const BillingPlan = () => {
         "✓ Customer order tracking",
         "✓ 24/7 email support",
       ],
-      button: "Coming Soon",
+      button: "Start Free Trial",
       buttonClass: "primary",
-      priceIdMonthly: "",
-      priceIdYearly: "",
-      autoSubscribe: false,
-      notAvailable: true, // Mark as not available
+      priceIdMonthly: "price_1T5KFWHVEVbQywP8b5tfaSHy",
+      priceIdYearly: "price_1T5KGDHVEVbQywP8ccO6ku7r",
+      autoSubscribe: true,
     },
     {
       id: "growth",
@@ -249,7 +244,7 @@ const BillingPlan = () => {
       trialDays: 7,
       trialText: "7-day free trial",
       features: [
-        "✓ Everything in Free Trial",
+        "✓ Everything in Starter",
         "✓ Full inventory management",
         "✓ Automatic tax calculations",
         "✓ Detailed sales dashboards",
@@ -264,8 +259,8 @@ const BillingPlan = () => {
       button: "Start Free Trial",
       buttonClass: "primary",
       isPopular: true,
-      priceIdMonthly: "price_1T5KFWHVEVbQywP8b5tfaSHy",
-      priceIdYearly: "price_1T5KGDHVEVbQywP8ccO6ku7r",
+      priceIdMonthly: "price_1TKCi6HVEVbQywP8Pdb5qlUu",
+      priceIdYearly: "price_1TKCiiHVEVbQywP8ga59LQ3Y",
       autoSubscribe: true,
     },
     {
@@ -292,8 +287,8 @@ const BillingPlan = () => {
       ],
       button: "Start Free Trial",
       buttonClass: "secondary",
-      priceIdMonthly: "price_1T5KGqHVEVbQywP8TI8qobph",
-      priceIdYearly: "price_1T5KHPHVEVbQywP8GfJBPmiw",
+      priceIdMonthly: "price_1TKCkLHVEVbQywP8QIPuq8py",
+      priceIdYearly: "price_1TKCkwHVEVbQywP8CIVH7COV",
       autoSubscribe: true,
     },
   ];
@@ -350,7 +345,7 @@ const BillingPlan = () => {
           updatedAt: new Date(),
         });
         
-        setUserPlan(plan.id);
+        setUserPlan(plan.id as "free" | "starter" | "growth" | "pro");
         setUserBillingCycle(billingCycle);
         setSubscriptionEndDate(subscriptionEndDate);
         setSuccessMessage(`✅ Plan activated! Welcome to ${plan.name}`);
@@ -443,7 +438,6 @@ const BillingPlan = () => {
         {/* Top Bar */}
         <TopBar
           onMenuClick={() => setSidebarOpen(!sidebarOpen)}
-          onRoleChange={(role) => setSelectedRole(role)}
         />
 
         <div className="scrollable-content">
@@ -537,7 +531,6 @@ const BillingPlan = () => {
                 >
                   {plan.isPopular && <div className="popular-badge">Most Popular</div>}
                   {isCurrentPlan && <div className="active-badge">✓ Active</div>}
-                  {plan.notAvailable && <div style={{backgroundColor: "#fbbf24", color: "#78350f", padding: "4px 12px", borderRadius: "20px", fontSize: "12px", fontWeight: "600", display: "inline-block", marginBottom: "8px"}}>Coming Soon</div>}
 
                   <div className="plan-header">
                     <h2 className="plan-name">{plan.name}</h2>
@@ -566,7 +559,7 @@ const BillingPlan = () => {
                   <button
                     className={`plan-button ${plan.buttonClass} ${isCurrentPlan ? "current-plan" : ""}`}
                     onClick={() => handleUpgrade(plan)}
-                    disabled={plan.id === "free" || isCurrentPlan || loading || plan.notAvailable}
+                    disabled={plan.id === "free" || isCurrentPlan || loading}
                   >
                     {isCurrentPlan ? "✓ Current Plan" : loading ? "Processing..." : plan.button}
                   </button>
