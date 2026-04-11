@@ -742,4 +742,3 @@ app.get("*", (req, res) => {
     res.status(404).json({ error: "React app not built. Run: npm run build" });
   }
 });
-});
