@@ -3,7 +3,7 @@ services:
     name: ai-business-management
     env: node
     buildCommand: npm ci --include=dev && npm run build
-    startCommand: cd server && npm ci --include=dev && npm start
+    startCommand: cd server && npm ci --include=dev && node index.js
     envVars:
       - key: NODE_ENV
         value: production
