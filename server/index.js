@@ -123,7 +123,7 @@ app.post("/demo-checkout-session", async (req, res) => {
       });
     }
 
-    const origin = req.headers.origin || "http://localhost:3000";
+    const origin = req.headers.origin || process.env.CLIENT_DOMAIN || "http://localhost:3000";
     const successUrl = `${origin}/billing-plan?success=true&plan=${plan}&cycle=${billingCycle}`;
 
     console.log(`📝 Demo checkout for:`, { uid, plan, billingCycle });
@@ -489,8 +489,8 @@ app.post("/create-checkout-session", async (req, res) => {
       }
     }
 
-    // Get the origin from request headers or use localhost
-    const origin = req.headers.origin || "http://localhost:3000";
+    // Get the origin from request headers, fallback to CLIENT_DOMAIN env var, or localhost for dev
+    const origin = req.headers.origin || process.env.CLIENT_DOMAIN || "http://localhost:3000";
     
     // Generate success and cancel URLs
     const successUrl = `${origin}/billing-plan?success=true&plan=${plan || extractPlanFromPrice(priceId)}&cycle=${billingCycle}`;
@@ -717,25 +717,29 @@ app.post("/webhook", async (req, res) => {
   }
 });
 
-// 404 handler for API routes (before static files)
-app.use((req, res, next) => {
-  if (req.path.startsWith('/api/') || req.path === '/webhook' || req.path === '/create-checkout-session') {
-    console.log(`❌ API route not found: ${req.method} ${req.path}`);
-    return res.status(404).json({ error: `Route not found: ${req.method} ${req.path}` });
-  }
-  next();
-});
+// Serve static files from the React app BUILD (before fallback)
+const distPath = path.join(__dirname, "../dist");
+console.log(`📁 Serving static files from: ${distPath}`);
+console.log(`📁 Path exists: ${require("fs").existsSync(distPath)}`);
+app.use(express.static(distPath));
 
-// Serve static files from the React app
-app.use(express.static(path.join(__dirname, "../dist")));
-
-// Error handling middleware
+// Error handling middleware (catches any thrown errors)
 app.use((err, req, res, next) => {
-  console.error("Server error:", err);
-  res.status(500).json({ error: "Internal server error" });
+  console.error("❌ Server error:", err.message, err.stack);
+  res.status(500).json({ 
+    error: "Internal server error",
+    details: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
 });
 
-// Serve React app for all non-API routes
+// Serve React app for all unmatched routes (must be LAST)
 app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "../dist", "index.html"));
+  const indexPath = path.join(distPath, "index.html");
+  console.log(`📄 Serving React app from: ${indexPath}`);
+  if (require("fs").existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(404).json({ error: "React app not built. Run: npm run build" });
+  }
+});
 });
