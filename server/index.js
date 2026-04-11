@@ -15,7 +15,7 @@ const PORT = process.env.PORT || 3001;
 
 // Try to use PORT, if it fails try another
 const server = app.listen(PORT, () => {
-  console.log(`\n🚀 Stripe server running on port ${PORT}`);
+  console.log(`\n🚀🚀🚀 STRIPE EXPRESS SERVER RUNNING ON PORT ${PORT} 🚀🚀🚀`);
   console.log(`📝 Webhook endpoint: http://localhost:${PORT}/webhook`);
   console.log(`📍 Create checkout: http://localhost:${PORT}/create-checkout-session`);
   
@@ -122,6 +122,18 @@ app.use((req, res, next) => {
 // Health check
 app.get("/health", (req, res) => {
   res.json({ status: "Server is running" });
+});
+
+// DIAGNOSTIC: Prove we're running the STRIPE server, not Square
+app.get("/server-identity", (req, res) => {
+  res.json({ 
+    server: "STRIPE-EXPRESS-BILLING-SERVER",
+    timestamp: new Date().toISOString(),
+    port: PORT,
+    nodeEnv: process.env.NODE_ENV,
+    stripeConfigured: !!STRIPE_SECRET_KEY,
+    message: "✅ If you see this, the EXPRESS STRIPE server is running correctly"
+  });
 });
 
 // Integrations access check - Always allow (tier gating happens on frontend)
