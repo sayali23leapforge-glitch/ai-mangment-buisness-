@@ -176,6 +176,187 @@ app.post("/demo-checkout-session", async (req, res) => {
   }
 });
 
+// ⭐ CREATE CHECKOUT SESSION - MOVED HERE TO RUN BEFORE STATIC MIDDLEWARE ⭐
+app.post("/create-checkout-session", async (req, res) => {
+  const requestId = `REQ-${Date.now()}`;
+  try {
+    // Check if Stripe is configured
+    if (!stripeClient || !STRIPE_SECRET_KEY) {
+      console.error(`[${requestId}] ❌ Stripe not configured - secret key missing`);
+      return res.status(503).json({
+        error: "Payment system not configured. Please contact support.",
+        details: "STRIPE_SECRET_KEY not set in environment",
+        requestId
+      });
+    }
+
+    const { uid, priceId, billingCycle, plan } = req.body;
+    const origin = req.headers.origin;
+    
+    console.log(`\n[${requestId}] 📍 Checkout session request received`);
+    console.log(`   Origin: ${origin}`);
+    console.log(`   Payload: uid=${uid}, priceId=${priceId}, billingCycle=${billingCycle}, plan=${plan}`);
+    console.log(`   Stripe Key Status: ${STRIPE_SECRET_KEY ? 'CONFIGURED' : 'MISSING'}\n`);
+
+    if (!uid || !priceId || !billingCycle) {
+      console.warn("❌ Missing fields in request");
+      return res.status(400).json({
+        error: "Missing required fields: uid, priceId, billingCycle",
+      });
+    }
+
+    console.log(`[${requestId}] 💳 Creating Stripe checkout session...`);
+    
+    let customerEmail = "customer@example.com";
+
+    // Try to get user email from Firestore if available
+    if (firestore && firestore.collection) {
+      try {
+        const userDoc = await firestore.collection("users").doc(uid).get();
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          customerEmail = userData?.email || userData?.emailAddress || customerEmail;
+        }
+      } catch (error) {
+        console.warn("⚠️ Could not fetch user from Firestore:", error.message);
+      }
+    }
+
+    // Get the origin from request headers, fallback to CLIENT_DOMAIN env var, or localhost for dev
+    // NOTE: 'origin' was already declared at line 501, reusing it
+    const successUrl = `${origin}/billing-plan?success=true&plan=${plan || extractPlanFromPrice(priceId)}&cycle=${billingCycle}`;
+    const cancelUrl = `${origin}/billing-plan`;
+
+    console.log(`[${requestId}] 📝 Session config:`);
+    console.log(`   Customer Email: ${customerEmail}`);
+    console.log(`   Price ID: ${priceId}`);
+    console.log(`   Billing Cycle: ${billingCycle}`);
+    console.log(`   Success URL: ${successUrl}`);
+    console.log(`   Cancel URL: ${cancelUrl}`);
+
+    // Validate price ID format
+    if (!priceId.startsWith("price_")) {
+      console.warn("⚠️ Invalid price ID format:", priceId);
+      return res.status(400).json({
+        error: "Invalid price ID format. Expected format: price_xxxxx",
+      });
+    }
+
+    try {
+      // Step 1: Create or retrieve Stripe customer (required for Accounts V2)
+      let customerId;
+      
+      try {
+        // Search for existing customer by email
+        const customers = await stripeClient.customers.list({
+          email: customerEmail,
+          limit: 1,
+        });
+        
+        if (customers.data.length > 0) {
+          customerId = customers.data[0].id;
+          console.log(`✅ Found existing Stripe customer: ${customerId}`);
+        } else {
+          // Create new customer
+          const customer = await stripeClient.customers.create({
+            email: customerEmail,
+            metadata: {
+              uid,
+              createdAt: new Date().toISOString(),
+            },
+          });
+          customerId = customer.id;
+          console.log(`✅ Created new Stripe customer: ${customerId}`);
+        }
+      } catch (customerError) {
+        console.error("⚠️ Could not manage customer, will attempt checkout anyway:", customerError.message);
+        // Continue without customer - may fail with V2 accounts
+      }
+
+      // Step 2: Create checkout session with customer ID
+      const sessionParams = {
+        payment_method_types: ["card"],
+        line_items: [
+          {
+            price: priceId,
+            quantity: 1,
+          },
+        ],
+        mode: "subscription",
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+        metadata: {
+          uid,
+          billingCycle,
+        },
+        allow_promotion_codes: true,
+        billing_address_collection: "auto",
+      };
+
+      // Add customer ID if available
+      if (customerId) {
+        sessionParams.customer = customerId;
+      } else {
+        // Fallback for older Stripe setups
+        sessionParams.customer_email = customerEmail;
+      }
+
+      const session = await stripeClient.checkout.sessions.create(sessionParams);
+
+      console.log(`[${requestId}] ✅ Stripe session created successfully`);
+      console.log(`   Session ID: ${session.id}`);
+      console.log(`   Customer ID: ${customerId}`);
+      console.log(`   URL: ${session.url}\n`);
+
+      res.json({ 
+        sessionUrl: session.url,
+        sessionId: session.id,
+        isDemoMode: false,
+        requestId
+      });
+    } catch (stripeError) {
+      console.error(`[${requestId}] ❌ STRIPE ERROR - FULL DETAILS:`);
+      console.error("   Message:", stripeError.message);
+      console.error("   Type:", stripeError.type);
+      console.error("   Status Code:", stripeError.statusCode);
+      console.error("   Param:", stripeError.param);
+
+      let errorMsg = "Stripe Error: ";
+      let statusCode = 500;
+
+      if (stripeError.message.includes("No such price")) {
+        errorMsg = `❌ Price ID '${priceId}' not found in Stripe account.\n`;
+        errorMsg += "Please verify this price ID exists in your Stripe Dashboard under Products & Prices.";
+        statusCode = 400;
+      } else if (stripeError.message.includes("Invalid API Key") || stripeError.message.includes("authentication")) {
+        errorMsg = "Stripe API key is invalid or expired. Check your .env configuration.";
+        statusCode = 400;
+      } else if (stripeError.statusCode === 401) {
+        errorMsg = "Stripe authentication failed. Invalid API key.";
+        statusCode = 400;
+      } else {
+        errorMsg += stripeError.message;
+      }
+
+      console.log(`[${requestId}] 📤 Sending error response: ${statusCode}\n`);
+
+      res.status(statusCode).json({ 
+        error: errorMsg,
+        stripeErrorMessage: stripeError.message,
+        stripeErrorType: stripeError.type,
+        priceIdTested: priceId,
+        requestId
+      });
+    }
+  } catch (error) {
+    console.error(`[${requestId}] ❌ Checkout session error:`, error.message);
+    res.status(500).json({
+      error: error.message || "Failed to create checkout session",
+      requestId
+    });
+  }
+});
+
 // Health check endpoint
 app.get("/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
@@ -482,194 +663,6 @@ app.post("/api/shopify/inventory", async (req, res) => {
     });
   }
 });
-
-// Create checkout session
-app.post("/create-checkout-session", async (req, res) => {
-  const requestId = `REQ-${Date.now()}`;
-  try {
-    // Check if Stripe is configured
-    if (!stripeClient || !STRIPE_SECRET_KEY) {
-      console.error(`[${requestId}] ❌ Stripe not configured - secret key missing`);
-      return res.status(503).json({
-        error: "Payment system not configured. Please contact support.",
-        details: "STRIPE_SECRET_KEY not set in environment",
-        requestId
-      });
-    }
-
-    const { uid, priceId, billingCycle, plan } = req.body;
-    const origin = req.headers.origin;
-    
-    console.log(`\n[${requestId}] 📍 Checkout session request received`);
-    console.log(`   Origin: ${origin}`);
-    console.log(`   Payload: uid=${uid}, priceId=${priceId}, billingCycle=${billingCycle}, plan=${plan}`);
-    console.log(`   Stripe Key Status: ${STRIPE_SECRET_KEY ? 'CONFIGURED' : 'MISSING'}\n`);
-
-    if (!uid || !priceId || !billingCycle) {
-      console.warn("❌ Missing fields in request");
-      return res.status(400).json({
-        error: "Missing required fields: uid, priceId, billingCycle",
-      });
-    }
-
-    console.log(`[${requestId}] 💳 Creating Stripe checkout session...`);
-    
-    let customerEmail = "customer@example.com";
-
-    // Try to get user email from Firestore if available
-    if (firestore && firestore.collection) {
-      try {
-        const userDoc = await firestore.collection("users").doc(uid).get();
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          customerEmail = userData?.email || userData?.emailAddress || customerEmail;
-        }
-      } catch (error) {
-        console.warn("⚠️ Could not fetch user from Firestore:", error.message);
-      }
-    }
-
-    // Get the origin from request headers, fallback to CLIENT_DOMAIN env var, or localhost for dev
-    // NOTE: 'origin' was already declared at line 501, reusing it
-    const successUrl = `${origin}/billing-plan?success=true&plan=${plan || extractPlanFromPrice(priceId)}&cycle=${billingCycle}`;
-    const cancelUrl = `${origin}/billing-plan`;
-
-    console.log(`[${requestId}] 📝 Session config:`);
-    console.log(`   Customer Email: ${customerEmail}`);
-    console.log(`   Price ID: ${priceId}`);
-    console.log(`   Billing Cycle: ${billingCycle}`);
-    console.log(`   Success URL: ${successUrl}`);
-    console.log(`   Cancel URL: ${cancelUrl}`);
-
-    // Validate price ID format
-    if (!priceId.startsWith("price_")) {
-      console.warn("⚠️ Invalid price ID format:", priceId);
-      return res.status(400).json({
-        error: "Invalid price ID format. Expected format: price_xxxxx",
-      });
-    }
-
-    try {
-      // Step 1: Create or retrieve Stripe customer (required for Accounts V2)
-      let customerId;
-      
-      try {
-        // Search for existing customer by email
-        const customers = await stripeClient.customers.list({
-          email: customerEmail,
-          limit: 1,
-        });
-        
-        if (customers.data.length > 0) {
-          customerId = customers.data[0].id;
-          console.log(`✅ Found existing Stripe customer: ${customerId}`);
-        } else {
-          // Create new customer
-          const customer = await stripeClient.customers.create({
-            email: customerEmail,
-            metadata: {
-              uid,
-              createdAt: new Date().toISOString(),
-            },
-          });
-          customerId = customer.id;
-          console.log(`✅ Created new Stripe customer: ${customerId}`);
-        }
-      } catch (customerError) {
-        console.error("⚠️ Could not manage customer, will attempt checkout anyway:", customerError.message);
-        // Continue without customer - may fail with V2 accounts
-      }
-
-      // Step 2: Create checkout session with customer ID
-      const sessionParams = {
-        payment_method_types: ["card"],
-        line_items: [
-          {
-            price: priceId,
-            quantity: 1,
-          },
-        ],
-        mode: "subscription",
-        success_url: successUrl,
-        cancel_url: cancelUrl,
-        metadata: {
-          uid,
-          billingCycle,
-        },
-        allow_promotion_codes: true,
-        billing_address_collection: "auto",
-      };
-
-      // Add customer ID if available
-      if (customerId) {
-        sessionParams.customer = customerId;
-      } else {
-        // Fallback for older Stripe setups
-        sessionParams.customer_email = customerEmail;
-      }
-
-      const session = await stripeClient.checkout.sessions.create(sessionParams);
-
-      console.log(`[${requestId}] ✅ Stripe session created successfully`);
-      console.log(`   Session ID: ${session.id}`);
-      console.log(`   Customer ID: ${customerId}`);
-      console.log(`   URL: ${session.url}\n`);
-
-      res.json({ 
-        sessionUrl: session.url,
-        sessionId: session.id,
-        isDemoMode: false,
-        requestId
-      });
-    } catch (stripeError) {
-      console.error(`[${requestId}] ❌ STRIPE ERROR - FULL DETAILS:`);
-      console.error("   Message:", stripeError.message);
-      console.error("   Type:", stripeError.type);
-      console.error("   Status Code:", stripeError.statusCode);
-      console.error("   Param:", stripeError.param);
-
-      let errorMsg = "Stripe Error: ";
-      let statusCode = 500;
-
-      if (stripeError.message.includes("No such price")) {
-        errorMsg = `❌ Price ID '${priceId}' not found in Stripe account.\n`;
-        errorMsg += "Please verify this price ID exists in your Stripe Dashboard under Products & Prices.";
-        statusCode = 400;
-      } else if (stripeError.message.includes("Invalid API Key") || stripeError.message.includes("authentication")) {
-        errorMsg = "Stripe API key is invalid or expired. Check your .env configuration.";
-        statusCode = 400;
-      } else if (stripeError.statusCode === 401) {
-        errorMsg = "Stripe authentication failed. Invalid API key.";
-        statusCode = 400;
-      } else {
-        errorMsg += stripeError.message;
-      }
-
-      console.log(`[${requestId}] 📤 Sending error response: ${statusCode}\n`);
-
-      res.status(statusCode).json({ 
-        error: errorMsg,
-        stripeErrorMessage: stripeError.message,
-        stripeErrorType: stripeError.type,
-        priceIdTested: priceId,
-        requestId
-      });
-    }
-  } catch (error) {
-    console.error(`[${requestId}] ❌ Checkout session error:`, error.message);
-    res.status(500).json({
-      error: error.message || "Failed to create checkout session",
-      requestId
-    });
-  }
-});
-
-// Helper function to extract plan name from price ID
-function extractPlanFromPrice(priceId) {
-  if (priceId.includes("growth")) return "growth";
-  if (priceId.includes("pro")) return "pro";
-  return "unknown";
-}
 
 // Webhook handler
 app.post("/webhook", async (req, res) => {
