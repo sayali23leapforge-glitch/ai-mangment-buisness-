@@ -15,8 +15,29 @@ const PORT = process.env.PORT || 3001;
 
 // Try to use PORT, if it fails try another
 const server = app.listen(PORT, () => {
-  console.log(`🚀 Stripe server running on http://localhost:${PORT}`);
+  console.log(`\n🚀 Stripe server running on port ${PORT}`);
   console.log(`📝 Webhook endpoint: http://localhost:${PORT}/webhook`);
+  console.log(`📍 Create checkout: http://localhost:${PORT}/create-checkout-session`);
+  
+  // Log all registered routes
+  setTimeout(() => {
+    console.log(`\n📋 Registered Express Routes:`);
+    app._router.stack.forEach((middleware) => {
+      if (middleware.route) {
+        const methods = Object.keys(middleware.route.methods).map(m => m.toUpperCase()).join(', ');
+        console.log(`   [${methods}] ${middleware.route.path}`);
+      } else if (middleware.name === 'router') {
+        middleware.handle.stack.forEach((handler) => {
+          const route = handler.route;
+          if (route) {
+            const methods = Object.keys(route.methods).map(m => m.toUpperCase()).join(', ');
+            console.log(`   [${methods}] ${route.path}`);
+          }
+        });
+      }
+    });
+    console.log('');
+  }, 100);
 }).on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
     console.log(`Port ${PORT} in use, trying port 5000...`);
@@ -694,6 +715,15 @@ app.post("/webhook", async (req, res) => {
     console.error("Webhook error:", error);
     res.status(500).json({ error: "Webhook processing failed" });
   }
+});
+
+// 404 handler for API routes (before static files)
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/') || req.path === '/webhook' || req.path === '/create-checkout-session') {
+    console.log(`❌ API route not found: ${req.method} ${req.path}`);
+    return res.status(404).json({ error: `Route not found: ${req.method} ${req.path}` });
+  }
+  next();
 });
 
 // Serve static files from the React app
