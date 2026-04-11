@@ -15,7 +15,9 @@ const PORT = process.env.PORT || 3001;
 
 // Try to use PORT, if it fails try another
 const server = app.listen(PORT, () => {
+  const timestamp = new Date().toISOString();
   console.log(`\n🚀🚀🚀 STRIPE EXPRESS SERVER RUNNING ON PORT ${PORT} 🚀🚀🚀`);
+  console.log(`⏰ DEPLOYMENT TIMESTAMP: ${timestamp}`);
   console.log(`📝 Webhook endpoint: http://localhost:${PORT}/webhook`);
   console.log(`📍 Create checkout: http://localhost:${PORT}/create-checkout-session`);
   
