@@ -4,35 +4,32 @@
  * Supports: localhost dev (3001), production (same origin)
  */
 
+
+// Returns the backend API base URL
 const getBackendUrl = (): string => {
-  // If env var is explicitly set, use it (takes precedence)
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
+  const envUrl = import.meta.env.VITE_API_URL;
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const isProduction = !isLocalhost;
+
+  if (envUrl) {
+    return envUrl;
   }
 
-  // Local development: backend on localhost:3001
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+  if (isLocalhost) {
+    // Local dev fallback
     return 'http://localhost:3001';
   }
 
-  // Production: backend served by same Express server (relative URL)
-  // Frontend and backend on same origin
-  return '';  // Empty string means use relative paths / same origin
+  // PRODUCTION: Never allow fallback to frontend domain
+  throw new Error('[CONFIG ERROR] VITE_API_URL is not set in production! All API calls will fail. Please set VITE_API_URL to your backend endpoint.');
 };
 
 const API_BASE_URL = getBackendUrl();
 
+// Returns the full API URL for a given endpoint
 export const getApiUrl = (endpoint: string): string => {
-  // Remove leading slash if present
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
-  
-  if (API_BASE_URL) {
-    // If we have a base URL (dev), prepend it
-    return `${API_BASE_URL}/${cleanEndpoint}`;
-  }
-  
-  // Production: Use relative path (same origin)
-  return `/${cleanEndpoint}`;
+  return `${API_BASE_URL.replace(/\/$/, '')}/${cleanEndpoint}`;
 };
 
 export default API_BASE_URL;
