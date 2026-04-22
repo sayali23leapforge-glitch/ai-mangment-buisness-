@@ -16,21 +16,6 @@ import "../styles/BillingPlan.css";
 // const STRIPE_PUBLIC_KEY = import.meta.env.VITE_STRIPE_PUBLIC_KEY || "";
 // const STRIPE_PRICE_GROWTH_MONTHLY = import.meta.env.VITE_STRIPE_PRICE_GROWTH_MONTHLY || "";
 
-// MOCK: Temporary mock functions for development
-const createMockCheckoutSession = async (
-  priceId: string,
-  email?: string | null
-): Promise<{ sessionId: string; success: boolean }> => {
-  console.log("🎭 MOCK: Creating checkout session for price:", priceId, "email:", email);
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        sessionId: `mock_session_${Date.now()}`,
-        success: true,
-      });
-    }, 500);
-  });
-};
 
 // Removed ModalState - using real Stripe checkout
 
