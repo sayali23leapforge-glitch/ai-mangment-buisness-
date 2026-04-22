@@ -14,7 +14,8 @@ import type {
 } from "./quickbooksTypes";
 import { updateQuickBooksSync } from "./quickbooksStore";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' && window.location.hostname === 'localhost' ? 'http://localhost:4242' : typeof window !== 'undefined' ? window.location.origin : 'http://localhost:4242');
+import { getApiUrl } from '../config/api';
+const API_BASE_URL = getApiUrl("");
 
 /**
  * Refresh QuickBooks OAuth token

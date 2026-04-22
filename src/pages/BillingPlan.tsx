@@ -1,3 +1,5 @@
+// PROD BUNDLE TEST LOG - 2026-04-22
+console.log("PROD BUNDLE TEST: 2026-04-22 - BillingPlan.tsx loaded");
 import { useState, useEffect } from "react";
 import { getApiUrl } from "../config/api";
 import { useSearchParams } from "react-router-dom";

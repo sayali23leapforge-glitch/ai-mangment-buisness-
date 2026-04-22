@@ -28,22 +28,8 @@ detectBackendPort();
 
 // When the app is served from the same server as the API (e.g. localhost:3001),
 // use the same origin so API calls hit the correct server.
-const getBackendBaseUrl = () => {
-  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
-  if (typeof window !== "undefined") {
-    const { hostname, port } = window.location;
-    if (hostname === "localhost") {
-      // If app is running on the backend port itself, use same origin
-      if (port === "3001" || port === "5000" || port === "4242") {
-        return window.location.origin;
-      }
-      // Vite dev server (3000) — point directly at backend
-      return `http://localhost:${BACKEND_PORT}`;
-    }
-    return window.location.origin;
-  }
-  return `http://localhost:${BACKEND_PORT}`;
-};
+import { getApiUrl } from '../config/api';
+const getBackendBaseUrl = () => getApiUrl("");
 
 const getAuthToken = async () => {
   const user = auth.currentUser;

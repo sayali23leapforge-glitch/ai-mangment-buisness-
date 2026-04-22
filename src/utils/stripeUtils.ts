@@ -93,18 +93,14 @@ export async function createCheckoutSession(
       `🔄 Creating checkout session for plan: ${plan}, cycle: ${billingCycle}`
     );
 
-    // Determine server URL based on environment
-    let serverUrl = window.location.origin;
-    
-    // In development localhost, use backend on port 3001
-    if (window.location.hostname === 'localhost') {
-      serverUrl = 'http://localhost:3001';
-    }
-    
-    console.log(`📍 Server URL: ${serverUrl}`);
-    
-    console.log(`📤 Sending request to ${serverUrl}/create-checkout-session`);
-    const response = await fetch(`${serverUrl}/create-checkout-session`, {
+    // Use unified API URL logic
+    // Import getApiUrl at the top of the file
+    // (already imported below if not, otherwise add)
+    // Use getApiUrl for endpoint
+    const { getApiUrl } = await import('../config/api');
+    const checkoutUrl = getApiUrl('/create-checkout-session');
+    console.log(`📤 Sending request to ${checkoutUrl}`);
+    const response = await fetch(checkoutUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
