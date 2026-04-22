@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { getApiUrl } from "../config/api";
 import { useSearchParams } from "react-router-dom";
 import { Check, AlertCircle } from "lucide-react";
 import TopBar from "../components/TopBar";
@@ -353,30 +354,11 @@ const BillingPlan = () => {
         return;
       }
 
-      // Determine backend URL - prioritize env var, fallback to current origin
-      const backendUrlEnv = import.meta.env.VITE_BACKEND_URL;
-      const isDevMode = import.meta.env.DEV;
-      const isTrueLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      
-      let serverUrl;
-      if (isDevMode && isTrueLocalhost) {
-        // Local dev: use localhost:5000
-        serverUrl = 'http://localhost:5000';
-      } else if (backendUrlEnv && backendUrlEnv.trim()) {
-        // Production: use VITE_BACKEND_URL from env
-        serverUrl = backendUrlEnv.trim();
-      } else {
-        // Fallback: use current origin (same domain)
-        serverUrl = window.location.origin;
-      }
 
+      // Use unified API URL logic
+      const checkoutUrl = getApiUrl('/create-checkout-session');
       console.log(`🔄 Creating checkout for ${plan.name} (${billingCycle})...`);
-      console.log(`📊 Environment: dev=${isDevMode}, localhost=${isTrueLocalhost}`);
-      console.log(`📨 Backend URL: ${serverUrl}`);
-      console.log(`📨 VITE_BACKEND_URL env: ${backendUrlEnv || 'NOT SET'}`);
-
-      const checkoutUrl = `${serverUrl}/create-checkout-session`;
-      console.log(`📤 [PRODUCTION] Sending POST to: ${checkoutUrl}`);
+      console.log(`📤 Sending POST to: ${checkoutUrl}`);
       console.log(`📋 Request payload:`, {
         uid: user.uid,
         priceId,
@@ -395,8 +377,7 @@ const BillingPlan = () => {
           plan: plan.id,
         }),
       });
-
-      console.log(`✅ [PRODUCTION] Response status received: ${response.status}`);
+      console.log(`✅ Response status received: ${response.status}`);
 
       if (!response.ok) {
         let errorData;
@@ -409,7 +390,7 @@ const BillingPlan = () => {
         
         let errorMsg = "Payment system error";
         if (response.status === 404) {
-          errorMsg = `Checkout endpoint not found (404). Backend URL may be incorrect: ${serverUrl}/create-checkout-session`;
+          errorMsg = `Checkout endpoint not found (404). Backend URL may be incorrect: ${checkoutUrl}`;
         } else if (response.status === 503) {
           errorMsg = `Payment system not configured: ${errorData.details || errorData.error}`;
         } else if (response.status === 500) {

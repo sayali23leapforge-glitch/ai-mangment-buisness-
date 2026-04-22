@@ -57,7 +57,5 @@ services:
       # IMPORTANT: If using custom domain (nayance.com), update these to match
       - key: VITE_API_URL
         value: https://nayance.com
-      - key: VITE_BACKEND_URL
-        value: https://nayance.com
       - key: CLIENT_DOMAIN
         value: https://nayance.com
