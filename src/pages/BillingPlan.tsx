@@ -35,6 +35,7 @@ const BillingPlan = () => {
   const [userPlan, setUserPlan] = useState<"starter" | "growth" | "pro" | null>(null);
   const [userBillingCycle, setUserBillingCycle] = useState<"monthly" | "yearly" | null>(null);
   const [subscriptionEndDate, setSubscriptionEndDate] = useState<Date | null>(null);
+  const [trialActive, setTrialActive] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
   // Fetch user's current plan from Firestore
@@ -48,6 +49,7 @@ const BillingPlan = () => {
           const plan = data?.plan || null;
           let cycle = data?.billing_cycle || null;
           const endDate = data?.subscription_end_date ? new Date(data.subscription_end_date) : null;
+          const isTrialActive = data?.trial_active || false;
           
           // Only keep plan if it's one of the valid paid plans (starter, growth, pro)
           // If it's "free" or null, set it to null (no active plan)
@@ -66,6 +68,7 @@ const BillingPlan = () => {
             setUserPlan(null);
             setUserBillingCycle(null);
             setSubscriptionEndDate(null);
+            setTrialActive(false);
           } else {
             // If plan is active but cycle is not set, infer from expiration date
             if (validPlan && !cycle) {
@@ -91,7 +94,8 @@ const BillingPlan = () => {
             setUserPlan(validPlan as "starter" | "growth" | "pro" | null);
             setUserBillingCycle(cycle);
             setSubscriptionEndDate(endDate);
-            console.log(`📋 Current plan: ${validPlan || "none"} (${cycle})`);
+            setTrialActive(isTrialActive);
+            console.log(`📋 Current plan: ${validPlan || "none"} (${cycle}), Trial: ${isTrialActive}`);
           }
         }
       } catch (error) {
@@ -481,8 +485,8 @@ const BillingPlan = () => {
                 // Check if this plan card is the active one
                 // Only show as active if EXACTLY the same plan with same billing cycle
                 const isActive = plan.id === userPlan && userBillingCycle === billingCycle;
-                // Show as current plan
-                const isCurrentPlan = isActive;
+                // Show as current plan only if subscription is active (not during trial)
+                const isCurrentPlan = isActive && !trialActive;
                 
                 return (
                 <div
@@ -490,6 +494,7 @@ const BillingPlan = () => {
                   className={`plan-card ${plan.isPopular ? "popular" : ""} ${isCurrentPlan ? "active" : ""}`}
                 >
                   {plan.isPopular && <div className="popular-badge">Most Popular</div>}
+                  {isActive && trialActive && <div className="trial-badge">⏱️ Trial Active</div>}
                   {isCurrentPlan && <div className="active-badge">✓ Active</div>}
 
                   <div className="plan-header">

@@ -128,39 +128,6 @@ const ImprovementHub = () => {
             <p>Explore powerful features designed to scale your business operations and streamline workflows.</p>
           </div>
 
-          {/* Tier Status Display */}
-          <div className={`tier-status-display tier-${tier}`}>
-            <div className="tier-badge-indicator">
-              {tier === "pro" && "👑 PRO PLAN"}
-              {tier === "growth" && "🚀 STARTER PLAN"}
-              {tier === "free" && "🆓 FREE PLAN"}
-            </div>
-            <div className="tier-description">
-              {tier === "pro" && (
-                <>
-                  <strong>✅ 5 features unlocked!</strong>
-                  <p>Pro: Multi-Currency, Offline Mode, Fraud Detection, Smart Notifications, Advanced Analytics</p>
-                  <p>🚀 Coming Soon: Payroll, Bank APIs, Community Hub</p>
-                </>
-              )}
-              {tier === "growth" && (
-                <>
-                  <strong>✅ 2 features unlocked!</strong>
-                  <p>Starter: Smart Notifications, Advanced Analytics</p>
-                  <p>🚀 Coming Soon: Community Hub</p>
-                  <p>🔒 Upgrade to Pro for: Multi-Currency, Offline Mode, Payroll, Bank APIs, Fraud Detection</p>
-                </>
-              )}
-              {tier === "free" && (
-                <>
-                  <strong>🔒 No features available</strong>
-                  <p>Upgrade to Starter for 2 features (Smart Notifications, Advanced Analytics)</p>
-                  <p>Upgrade to Pro for 5 features (add Multi-Currency, Offline Mode, Fraud Detection)</p>
-                </>
-              )}
-            </div>
-          </div>
-
           <div className="improvements-grid">
             {improvements.map((improvement, idx) => {
               const IconComponent = improvement.icon;
