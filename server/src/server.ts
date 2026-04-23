@@ -16,6 +16,7 @@ dotenv.config();
 import express, { Express, Request, Response, NextFunction } from 'express';
 import cors, { CorsOptions } from 'cors';
 import path from 'path';
+import Stripe from 'stripe';
 import { logger, LogLevel } from './utils/logger';
 import { squareService } from './services/squareService';
 import squareRoutes from './routes/squareRoutes';
@@ -25,6 +26,19 @@ import integrationRoutes from './routes/integrationRoutes';
 // Initialize Express app
 const app: Express = express();
 const PORT = process.env.PORT || 5000;
+
+// ============ STRIPE INITIALIZATION ============
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
+let stripeClient: Stripe | null = null;
+
+if (!STRIPE_SECRET_KEY) {
+  logger.warn('⚠️  STRIPE_SECRET_KEY not set - Stripe checkout will not work');
+} else {
+  stripeClient = new Stripe(STRIPE_SECRET_KEY, {
+    apiVersion: '2023-10-16' as any,
+  });
+  logger.info(`✅ Stripe initialized (key: ${STRIPE_SECRET_KEY.substring(0, 8)}...)`);
+}
 
 // ============ MIDDLEWARE ============
 
@@ -105,6 +119,110 @@ app.use('/integrations', integrationRoutes);
  * Base: /webhook
  */
 app.use('/webhook', webhookRoutes);
+
+// ============ STRIPE CHECKOUT ROUTE ============
+
+/**
+ * POST /create-checkout-session
+ * Creates a Stripe checkout session for subscription
+ */
+app.post('/create-checkout-session', async (req: Request, res: Response) => {
+  const requestId = `REQ-${Date.now()}`;
+  
+  console.log('\n' + '='.repeat(80));
+  console.log('🎯🎯🎯 STRIPE CHECKOUT ROUTE HIT 🎯🎯🎯');
+  console.log(`[${requestId}] ${req.method} ${req.originalUrl} at ${new Date().toISOString()}`);
+  console.log('='.repeat(80) + '\n');
+
+  try {
+    // Verify Stripe is configured
+    if (!stripeClient || !STRIPE_SECRET_KEY) {
+      logger.error(`[${requestId}] ❌ Stripe not configured`);
+      return res.status(503).json({
+        error: 'Payment system not configured',
+        details: 'STRIPE_SECRET_KEY not set',
+        requestId,
+      });
+    }
+
+    const { uid, priceId, billingCycle, plan } = req.body;
+    const origin = req.headers.origin;
+
+    logger.info(`[${requestId}] 📍 Checkout request received`);
+    logger.info(`   Origin: ${origin}`);
+    logger.info(`   Payload: uid=${uid}, priceId=${priceId}, billingCycle=${billingCycle}, plan=${plan}`);
+
+    // Validate required fields
+    if (!uid || !priceId || !billingCycle) {
+      logger.warn(`[${requestId}] ❌ Missing required fields`);
+      return res.status(400).json({
+        error: 'Missing required fields: uid, priceId, billingCycle',
+        requestId,
+      });
+    }
+
+    // Validate price ID format
+    if (!priceId.startsWith('price_')) {
+      logger.warn(`[${requestId}] ❌ Invalid price ID format: ${priceId}`);
+      return res.status(400).json({
+        error: 'Invalid price ID format. Expected: price_xxxxx',
+        requestId,
+      });
+    }
+
+    logger.info(`[${requestId}] 💳 Creating Stripe checkout session...`);
+
+    // Create checkout session
+    const session = await stripeClient.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      mode: 'subscription',
+      success_url: `${origin}/billing-plan?success=true&plan=${plan}&cycle=${billingCycle}`,
+      cancel_url: `${origin}/billing-plan`,
+      metadata: {
+        uid,
+        billingCycle,
+      },
+      allow_promotion_codes: true,
+      billing_address_collection: 'auto',
+    });
+
+    logger.info(`[${requestId}] ✅ Stripe session created`);
+    logger.info(`   Session ID: ${session.id}`);
+    logger.info(`   URL: ${session.url}\n`);
+
+    res.json({
+      sessionUrl: session.url,
+      sessionId: session.id,
+      isDemoMode: false,
+      requestId,
+    });
+  } catch (error: any) {
+    logger.error(`[${requestId}] ❌ Stripe error:`, error.message);
+
+    let statusCode = 500;
+    let errorMsg = error.message;
+
+    if (error.message.includes('No such price')) {
+      statusCode = 400;
+      errorMsg = `Price ID '${req.body.priceId}' not found in Stripe account`;
+    } else if (error.statusCode === 401) {
+      statusCode = 400;
+      errorMsg = 'Stripe authentication failed - invalid API key';
+    }
+
+    res.status(statusCode).json({
+      error: errorMsg,
+      stripeErrorType: error.type,
+      requestId,
+    });
+  }
+});
 
 // ============ STATIC FILE SERVING ============
 // Serve frontend static files from dist/ folder
