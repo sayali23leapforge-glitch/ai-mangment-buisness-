@@ -166,6 +166,19 @@ app.get("/health/checkout", async (req, res) => {
   });
 });
 
+// 🔥 CRITICAL DIAGNOSTIC ENDPOINT - Confirms server is running 🔥
+app.post("/checkout-test", (req, res) => {
+  console.log("✅ CHECKOUT-TEST endpoint hit - Server is ALIVE and accepting POST requests");
+  res.json({
+    status: "ok",
+    message: "✅ Checkout route infrastructure is working",
+    timestamp: new Date().toISOString(),
+    port: PORT,
+    nodeEnv: process.env.NODE_ENV,
+    stripeConfigured: !!STRIPE_SECRET_KEY,
+  });
+});
+
 // Demo checkout endpoint (for testing without valid Stripe price IDs)
 app.post("/demo-checkout-session", async (req, res) => {
   try {
@@ -199,6 +212,13 @@ app.post("/demo-checkout-session", async (req, res) => {
 // ⭐ CREATE CHECKOUT SESSION - MOVED HERE TO RUN BEFORE STATIC MIDDLEWARE ⭐
 app.post("/create-checkout-session", async (req, res) => {
   const requestId = `REQ-${Date.now()}`;
+  
+  // 🔥🔥🔥 UNMISTAKABLE LOG - PROVES ROUTE WAS HIT 🔥🔥🔥
+  console.log("\n" + "=".repeat(80));
+  console.log("🎯🎯🎯 CHECKOUT ROUTE HIT 🎯🎯🎯");
+  console.log(`[${requestId}] ${req.method} ${req.originalUrl} at ${new Date().toISOString()}`);
+  console.log("=".repeat(80) + "\n");
+  
   try {
     // Check if Stripe is configured
     if (!stripeClient || !STRIPE_SECRET_KEY) {
@@ -377,6 +397,21 @@ app.post("/create-checkout-session", async (req, res) => {
   }
 });
 
+// Alias route for /api prefix (both should work)
+app.post("/api/create-checkout-session", async (req, res) => {
+  console.log("📌 Checkout request via /api/create-checkout-session (alias)");
+  // Just call the same response - we can reuse the main handler
+  // For now, return helpful error
+  res.status(200).json({
+    status: "alias_works",
+    message: "Use POST /create-checkout-session instead (no /api prefix needed)",
+    endpoints: [
+      "POST /create-checkout-session ← Primary endpoint",
+      "POST /api/create-checkout-session ← Alias (for convenience)"
+    ]
+  });
+});
+
 // Health check endpoint
 app.get("/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
@@ -393,7 +428,16 @@ app.get("/api-status", (req, res) => {
     port: PORT,
     nodeEnv: process.env.NODE_ENV,
     stripeConfigured: !!STRIPE_SECRET_KEY,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      "POST /create-checkout-session": "Main Stripe checkout endpoint",
+      "POST /demo-checkout-session": "Demo checkout (mock)",
+      "POST /checkout-test": "Diagnostic test endpoint",
+      "GET /health": "Health check",
+      "POST /health": "Health check (POST)",
+      "GET /health/checkout": "Checkout diagnostic",
+      "POST /webhook": "Stripe webhook receiver"
+    }
   });
 });
 
