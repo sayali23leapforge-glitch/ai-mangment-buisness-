@@ -32,7 +32,7 @@ const BillingPlan = () => {
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
   const [loading, setLoading] = useState(false);
   const [currency, setCurrency] = useState("CAD");
-  const [userPlan, setUserPlan] = useState<"free" | "starter" | "growth" | "pro">("free");
+  const [userPlan, setUserPlan] = useState<"starter" | "growth" | "pro" | null>(null);
   const [userBillingCycle, setUserBillingCycle] = useState<"monthly" | "yearly" | null>(null);
   const [subscriptionEndDate, setSubscriptionEndDate] = useState<Date | null>(null);
   const [successMessage, setSuccessMessage] = useState("");
@@ -45,25 +45,30 @@ const BillingPlan = () => {
         const userDoc = await getDoc(doc(db, "users", user.uid));
         if (userDoc.exists()) {
           const data = userDoc.data();
-          const plan = data?.plan || "free";
+          const plan = data?.plan || null;
           let cycle = data?.billing_cycle || null;
           const endDate = data?.subscription_end_date ? new Date(data.subscription_end_date) : null;
           
+          // Only keep plan if it's one of the valid paid plans (starter, growth, pro)
+          // If it's "free" or null, set it to null (no active plan)
+          const validPlan = (plan === "starter" || plan === "growth" || plan === "pro") ? plan : null;
+          
           // Check if subscription has expired
-          if (plan !== "free" && endDate && endDate < new Date()) {
-            console.log("⏰ Subscription expired, reverting to free plan...");
+          if (validPlan && endDate && endDate < new Date()) {
+            console.log("⏰ Subscription expired, clearing plan...");
             await updateDoc(doc(db, "users", user.uid), {
-              plan: "free",
+              plan: null,
               billing_cycle: null,
               subscription_end_date: null,
+              trial_active: false,
               updatedAt: new Date(),
             });
-            setUserPlan("free");
+            setUserPlan(null);
             setUserBillingCycle(null);
             setSubscriptionEndDate(null);
           } else {
             // If plan is active but cycle is not set, infer from expiration date
-            if (plan !== "free" && !cycle) {
+            if (validPlan && !cycle) {
               if (endDate) {
                 // Estimate from expiration date difference: if >300 days, likely yearly
                 const daysToExpire = Math.floor((endDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
@@ -83,10 +88,10 @@ const BillingPlan = () => {
               });
             }
             
-            setUserPlan(plan);
+            setUserPlan(validPlan as "starter" | "growth" | "pro" | null);
             setUserBillingCycle(cycle);
             setSubscriptionEndDate(endDate);
-            console.log(`📋 Current plan: ${plan} (${cycle})`);
+            console.log(`📋 Current plan: ${validPlan || "none"} (${cycle})`);
           }
         }
       } catch (error) {
@@ -176,11 +181,11 @@ const BillingPlan = () => {
 
   const plans = [
     {
-      id: "free",
-      name: "Free Trial",
-      monthlyPrice: 0,
-      yearlyPrice: 0,
-      description: "2 weeks free trial, then $15.99/month",
+      id: "starter",
+      name: "Starter",
+      monthlyPrice: 15.99,
+      yearlyPrice: 159.99,
+      description: "14-day free trial, then CAD 15.99/month",
       trialDays: 14,
       trialText: "14-day free trial",
       features: [
@@ -192,23 +197,6 @@ const BillingPlan = () => {
         "✓ Basic product information",
         "✓ Manual product addition",
         "✓ Daily sales tracking",
-      ],
-      button: "Start Free Trial",
-      buttonClass: "primary",
-      priceIdMonthly: "",
-      priceIdYearly: "",
-      upgradesTo: "starter",
-    },
-    {
-      id: "starter",
-      name: "Starter",
-      monthlyPrice: 15.99,
-      yearlyPrice: 159.99,
-      description: "2 weeks free trial, then $15.99/month",
-      trialDays: 14,
-      trialText: "14-day free trial",
-      features: [
-        "✓ Everything in Free Trial",
         "✓ Basic inventory management",
         "✓ Simple sales dashboards",
         "✓ Sales trend overview",
@@ -228,7 +216,7 @@ const BillingPlan = () => {
       name: "Growth",
       monthlyPrice: 19.99,
       yearlyPrice: 199.99,
-      description: "1 week free trial, then auto-subscribe",
+      description: "7-day free trial, then CAD 19.99/month",
       trialDays: 7,
       trialText: "7-day free trial",
       features: [
@@ -256,7 +244,7 @@ const BillingPlan = () => {
       name: "Pro",
       monthlyPrice: 25.99,
       yearlyPrice: 259.99,
-      description: "1 week free trial, then auto-subscribe",
+      description: "7-day free trial, then CAD 25.99/month",
       trialDays: 7,
       trialText: "7-day free trial",
       features: [
@@ -290,29 +278,6 @@ const BillingPlan = () => {
     setLoading(true);
 
     try {
-      // Handle free trial for Free Trial plan
-      if (plan.id === "free") {
-        // Update to starter plan with 14-day trial
-        const trialEndDate = new Date();
-        trialEndDate.setDate(trialEndDate.getDate() + 14);
-        
-        await updateDoc(doc(db, "users", user.uid), {
-          plan: "starter",
-          billing_cycle: "monthly",
-          subscription_end_date: trialEndDate,
-          trial_active: true,
-          trial_days: 14,
-          updatedAt: new Date(),
-        });
-        
-        setUserPlan("starter");
-        setUserBillingCycle("monthly");
-        setSubscriptionEndDate(trialEndDate);
-        setSuccessMessage("✅ Free trial started! You have 14 days to experience Starter features.");
-        setTimeout(() => setSuccessMessage(""), 4000);
-        return;
-      }
-
       // Use real Stripe integration
       const priceId = billingCycle === "monthly" ? plan.priceIdMonthly : plan.priceIdYearly;
       
@@ -333,7 +298,7 @@ const BillingPlan = () => {
           updatedAt: new Date(),
         });
         
-        setUserPlan(plan.id as "free" | "starter" | "growth" | "pro");
+        setUserPlan(plan.id as "starter" | "growth" | "pro");
         setUserBillingCycle(billingCycle);
         setSubscriptionEndDate(subscriptionEndDate);
         setSuccessMessage(`✅ Plan activated! Welcome to ${plan.name}`);
@@ -468,7 +433,7 @@ const BillingPlan = () => {
             <div className="billing-header">
               <h1 className="billing-title">Billing & Plan</h1>
               <p className="billing-subtitle">Choose the perfect plan for your business</p>
-              {userPlan !== "free" && (
+              {userPlan && (
                 <p className="current-plan-badge">
                   Current Plan: <strong>{userPlan.toUpperCase()}</strong> ({userBillingCycle})
                   {subscriptionEndDate && (
@@ -516,8 +481,8 @@ const BillingPlan = () => {
                 // Check if this plan card is the active one
                 // Only show as active if EXACTLY the same plan with same billing cycle
                 const isActive = plan.id === userPlan && userBillingCycle === billingCycle;
-                // Can only show as active if it's not free plan
-                const isCurrentPlan = plan.id !== "free" && isActive;
+                // Show as current plan
+                const isCurrentPlan = isActive;
                 
                 return (
                 <div
@@ -547,14 +512,14 @@ const BillingPlan = () => {
                     </span>
                   </div>
 
-                  {billingCycle === "yearly" && plan.id !== "free" && (
+                  {billingCycle === "yearly" && (
                     <div className="plan-save-badge">Save 17%</div>
                   )}
 
                   <button
                     className={`plan-button ${plan.buttonClass} ${isCurrentPlan ? "current-plan" : ""}`}
                     onClick={() => handleUpgrade(plan)}
-                    disabled={plan.id === "free" || isCurrentPlan || loading}
+                    disabled={isCurrentPlan || loading}
                   >
                     {isCurrentPlan ? "✓ Current Plan" : loading ? "Processing..." : plan.button}
                   </button>

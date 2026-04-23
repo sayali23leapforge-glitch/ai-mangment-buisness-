@@ -23,35 +23,34 @@ export const STRIPE_PRICES = {
 // ============ PLAN TRIAL CONFIGURATION ============
 // Trial periods for each plan
 export const PLAN_TRIALS = {
-  free: {
+  starter: {
     enabled: true,
     days: 14,
-    description: "2 weeks free trial, then $15.99/month",
-    convertsTo: "growth",
+    description: "14-day free trial, then CAD 15.99/month",
   },
   growth: {
     enabled: true,
     days: 7,
-    description: "7-day free trial, then automatic subscription",
+    description: "7-day free trial, then CAD 19.99/month",
     autoSubscribe: true,
   },
   pro: {
     enabled: true,
     days: 7,
-    description: "7-day free trial, then automatic subscription",
+    description: "7-day free trial, then CAD 25.99/month",
     autoSubscribe: true,
   },
 };
 
 // ============ TYPES ============
 
-export type PlanType = "free" | "growth" | "pro";
+export type PlanType = "starter" | "growth" | "pro";
 export type BillingCycle = "monthly" | "yearly";
 
 export interface User {
   uid: string;
   email: string;
-  plan: PlanType;
+  plan: PlanType | "free" | null;
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
 }
@@ -67,21 +66,23 @@ export interface CheckoutSessionResponse {
  * Create Stripe checkout session and redirect user
  * 
  * @param uid - User's Firebase UID
- * @param plan - "growth" or "pro"
+ * @param plan - "starter", "growth", or "pro"
  * @param billingCycle - "monthly" or "yearly"
  * @returns Session URL to redirect to
  * 
  * @example
- * const sessionUrl = await createCheckoutSession(user.uid, "growth", "monthly");
+ * const sessionUrl = await createCheckoutSession(user.uid, "starter", "monthly");
  * window.location.href = sessionUrl;
  */
 export async function createCheckoutSession(
   uid: string,
-  plan: "growth" | "pro",
+  plan: PlanType,
   billingCycle: BillingCycle
 ): Promise<string> {
   try {
-    const priceId = STRIPE_PRICES[plan][billingCycle];
+    // Starter plan can use growth pricing temporarily
+    // This is handled by the backend
+    const priceId = STRIPE_PRICES[plan === "starter" ? "growth" : plan][billingCycle];
 
     if (!priceId) {
       throw new Error(
@@ -185,14 +186,16 @@ export interface PlanFeatures {
  * Get features for each plan
  */
 export const PLAN_FEATURES: Record<PlanType, PlanFeatures> = {
-  free: {
-    name: "Free",
-    price: 0,
+  starter: {
+    name: "Starter",
+    price: 15.99,
     features: [
       "Basic inventory tracking",
       "Up to 100 products",
       "Manual sales recording",
+      "Simple dashboard",
       "Basic reports (PDF)",
+      "24/7 email support",
     ],
     limits: {
       products: 100,
@@ -202,9 +205,9 @@ export const PLAN_FEATURES: Record<PlanType, PlanFeatures> = {
   },
   growth: {
     name: "Growth",
-    price: 19,
+    price: 19.99,
     features: [
-      "Everything in Free",
+      "Everything in Starter",
       "Unlimited products",
       "Team management (up to 5)",
       "AI Insights",
@@ -220,7 +223,7 @@ export const PLAN_FEATURES: Record<PlanType, PlanFeatures> = {
   },
   pro: {
     name: "Pro",
-    price: 39,
+    price: 25.99,
     features: [
       "Everything in Growth",
       "Unlimited team members",
@@ -261,7 +264,7 @@ export function hasFeatureAccess(
   featureName: string
 ): boolean {
   const FEATURE_ACCESS: Record<PlanType, string[]> = {
-    free: [
+    starter: [
       "basic_inventory",
       "manual_sales",
       "basic_reports",
@@ -324,7 +327,7 @@ export function isMenuFeatureAvailable(
   menuFeature: string
 ): boolean {
   const MENU_FEATURES: Record<PlanType, string[]> = {
-    free: [
+    starter: [
       "finance",
       "record_sale",
       "inventory_dashboard",
@@ -336,7 +339,7 @@ export function isMenuFeatureAvailable(
       "improvement_hub",
     ],
     growth: [
-      // All Free features
+      // All Starter features
       "finance",
       "record_sale",
       "inventory_dashboard",

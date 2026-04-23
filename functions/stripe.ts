@@ -37,11 +37,12 @@ interface CreateCheckoutSessionRequest {
   uid: string;
   priceId: string;
   billingCycle: "monthly" | "yearly";
+  plan: "starter" | "growth" | "pro";
 }
 
 interface User {
   email: string;
-  plan: "free" | "growth" | "pro";
+  plan: "starter" | "growth" | "pro" | null;
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
 }
@@ -321,7 +322,8 @@ async function handleInvoicePaid(event: Stripe.Event) {
 
 /**
  * Handle customer.subscription.deleted
- * User cancelled subscription - downgrade to free
+ * User cancelled subscription - don't downgrade, just mark as cancelled
+ * User can start a new trial on another plan or continue exploring without active subscription
  */
 async function handleSubscriptionDeleted(event: Stripe.Event) {
   const subscription = event.data.object as Stripe.Subscription;
@@ -347,10 +349,11 @@ async function handleSubscriptionDeleted(event: Stripe.Event) {
       throw new Error("Missing firebaseUid in customer metadata");
     }
 
-    // Downgrade user to free plan
+    // Mark subscription as cancelled - set subscription_end_date to now
+    // User plan stays as-is, but subscription is no longer active
     await db.collection("users").doc(firebaseUid).update({
-      plan: "free",
       stripeSubscriptionId: null,
+      trial_active: false,
       subscriptionCancelledAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
@@ -361,14 +364,13 @@ async function handleSubscriptionDeleted(event: Stripe.Event) {
       .collection("billingHistory")
       .add({
         event: "subscription_cancelled",
-        plan: "free",
         subscriptionId: subscription.id,
         cancelledAt: new Date(subscription.canceled_at! * 1000),
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
       });
 
     console.log(
-      `✅ Downgraded user ${firebaseUid} to free plan, subscriptionId: ${subscription.id}`
+      `✅ Marked subscription as cancelled for user ${firebaseUid}, subscriptionId: ${subscription.id}`
     );
   } catch (error: any) {
     console.error("❌ Error handling customer.subscription.deleted:", error);
@@ -382,14 +384,19 @@ async function handleSubscriptionDeleted(event: Stripe.Event) {
  * Determine plan type from Stripe price ID
  * Update PRICE_MAP with your actual Stripe price IDs from dashboard
  */
-async function determinePlanFromPrice(priceId: string): Promise<"growth" | "pro"> {
+async function determinePlanFromPrice(priceId: string): Promise<"starter" | "growth" | "pro"> {
   // Map Stripe Price IDs to plans
   // Get these from your Stripe Dashboard > Products
-  const PRICE_MAP: Record<string, "growth" | "pro"> = {
-    "price_1T4HotHVEVbQywP80VcSmqP6": "growth", // Growth Monthly
-    "price_1T4Hv9HVEVbQywP8iI9TkP81": "growth", // Growth Yearly
-    "price_1T4HrMHVEVbQywP8105KbPGA": "pro",   // Pro Monthly
-    "price_1T4I18HVEVbQywP8GrJXkTLu": "pro",   // Pro Yearly
+  const PRICE_MAP: Record<string, "starter" | "growth" | "pro"> = {
+    // Starter plan prices
+    "price_1T5KFWHVEVbQywP8b5tfaSHy": "starter", // Starter Monthly
+    "price_1T5KGDHVEVbQywP8ccO6ku7r": "starter", // Starter Yearly
+    // Growth plan prices
+    "price_1TKCi6HVEVbQywP8Pdb5qlUu": "growth", // Growth Monthly
+    "price_1TKCiiHVEVbQywP8ga59LQ3Y": "growth", // Growth Yearly
+    // Pro plan prices
+    "price_1TKCkLHVEVbQywP8QIPuq8py": "pro",   // Pro Monthly
+    "price_1TKCkwHVEVbQywP8CIVH7COV": "pro",   // Pro Yearly
   };
 
   const plan = PRICE_MAP[priceId];

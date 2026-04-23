@@ -7,10 +7,12 @@ import { useEffect, useState } from "react";
 import { doc, onSnapshot, Unsubscribe } from "firebase/firestore";
 import { db } from "../config/firebase";
 import { useAuth } from "../context/AuthContext";
-import { PlanType } from "../utils/stripeUtils";
+
+// Active user plans (excluding free/no-plan state)
+export type ActivePlanType = "starter" | "growth" | "pro";
 
 export interface UserPlanData {
-  plan: PlanType;
+  plan: ActivePlanType | null;
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
   subscriptionUpdatedAt?: Date;
@@ -19,7 +21,7 @@ export interface UserPlanData {
 }
 
 const DEFAULT_STATE: UserPlanData = {
-  plan: "free",
+  plan: null,
   stripeCustomerId: null,
   stripeSubscriptionId: null,
   loading: true,
@@ -36,7 +38,7 @@ const DEFAULT_STATE: UserPlanData = {
  * 
  * return (
  *   <div>
- *     Current Plan: {planData.plan}
+ *     Current Plan: {planData.plan || 'None'}
  *     {planData.stripeSubscriptionId && <p>Active subscription</p>}
  *   </div>
  * );
@@ -61,8 +63,13 @@ export function useUserPlan(): UserPlanData {
           if (docSnapshot.exists()) {
             const data = docSnapshot.data();
             
+            // Only keep valid active plans, otherwise set to null
+            const plan = (data.plan === "starter" || data.plan === "growth" || data.plan === "pro") 
+              ? data.plan as ActivePlanType 
+              : null;
+            
             setPlanData({
-              plan: (data.plan || "free") as PlanType,
+              plan,
               stripeCustomerId: data.stripeCustomerId || null,
               stripeSubscriptionId: data.stripeSubscriptionId || null,
               subscriptionUpdatedAt: data.subscriptionUpdatedAt?.toDate(),
@@ -71,19 +78,19 @@ export function useUserPlan(): UserPlanData {
             });
 
             console.log(
-              `✅ Loaded user plan: ${data.plan}, subscription: ${data.stripeSubscriptionId ? "active" : "none"}`
+              `✅ Loaded user plan: ${plan || 'none'}, subscription: ${data.stripeSubscriptionId ? "active" : "none"}`
             );
           } else {
             // User document doesn't exist yet
             // This might happen for new users before first page load
             setPlanData({
-              plan: "free",
+              plan: null,
               stripeCustomerId: null,
               stripeSubscriptionId: null,
               loading: false,
               error: null,
             });
-            console.log("ℹ️ User document not found, using default free plan");
+            console.log("ℹ️ User document not found, using default (no plan)");
           }
         },
         (error) => {
@@ -134,29 +141,31 @@ export function useUserPlanWithHelpers() {
      * Check if user can upgrade
      */
     canUpgrade(): boolean {
-      return planData.plan === "free" || planData.plan === "growth";
+      return planData.plan === null || planData.plan === "starter" || planData.plan === "growth";
     },
 
     /**
      * Check if user can downgrade
      */
     canDowngrade(): boolean {
-      return planData.plan !== "free";
+      return planData.plan !== null;
     },
 
     /**
-     * Check if user is on trial or free tier
+     * Check if user is on trial or needs to choose a plan
      */
     isTrialOrFree(): boolean {
-      return planData.plan === "free";
+      return planData.plan === null;
     },
 
     /**
      * Get upgrade options from current plan
      */
-    getUpgradeOptions(): ("growth" | "pro")[] {
+    getUpgradeOptions(): ActivePlanType[] {
       switch (planData.plan) {
-        case "free":
+        case null:
+          return ["starter", "growth", "pro"];
+        case "starter":
           return ["growth", "pro"];
         case "growth":
           return ["pro"];

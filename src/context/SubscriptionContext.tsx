@@ -3,6 +3,8 @@ import { db } from "../config/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { useAuth } from "./AuthContext";
 
+// Valid plan tiers that users can have
+// "free" represents no active plan / trial not started
 export type PlanTier = "free" | "starter" | "growth" | "pro";
 
 // Feature types
@@ -35,7 +37,7 @@ interface SubscriptionContextType {
   isTrialActive: boolean;
 }
 
-// Feature access matrix
+// Feature access matrix - what features each plan has
 const FEATURE_ACCESS: Record<PlanTier, FeatureName[]> = {
   free: [],
   starter: ["communityHub"],
@@ -62,7 +64,7 @@ export const SubscriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
         const userDoc = await getDoc(doc(db, "users", user.uid));
         if (userDoc.exists()) {
           const data = userDoc.data();
-          const plan = data?.plan || "free";
+          const plan = (data?.plan || "free") as PlanTier;
           const cycle = data?.billing_cycle || null;
           const endDate = data?.subscription_end_date ? new Date(data.subscription_end_date) : null;
           const trialActive = data?.trial_active || false;
@@ -83,7 +85,7 @@ export const SubscriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
             console.log(`📊 ${isTrial ? "Trial" : "Subscription"} active: ${daysLeft} days left`);
           }
 
-          setUserPlan(plan as PlanTier);
+          setUserPlan(plan);
           setUserBillingCycle(cycle as "monthly" | "yearly" | null);
           setSubscriptionEndDate(endDate);
           setTrialExpired(hasExpired);

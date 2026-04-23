@@ -23,8 +23,8 @@ service cloud.firestore {
       
       // Create: User can create their own document (on signup)
       allow create: if request.auth != null && request.auth.uid == uid
-                   && request.resource.data.keys().hasAll(['email', 'plan'])
-                   && request.resource.data.plan == 'free'
+                   && request.resource.data.keys().hasAll(['email'])
+                   && (request.resource.data.plan == null || request.resource.data.plan == 'free')
                    && request.resource.data.stripeCustomerId == null;
       
       // Update: RESTRICTED - Only Cloud Functions can update plan
