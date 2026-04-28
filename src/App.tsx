@@ -1,10 +1,11 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { RoleProvider } from "./context/RoleContext";
 import { SubscriptionProvider } from "./context/SubscriptionContext";
 import { DataSourceProvider } from "./context/DataSourceContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { ScrollToTop } from "./components/ScrollToTop";
+import { lazy, Suspense } from "react";
 
 import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
@@ -18,7 +19,7 @@ import RecordSale from "./pages/RecordSale";
 import AddProduct from "./pages/AddProduct";
 import QRManager from "./pages/QRManager"; 
 import AIInsights from "./pages/AIInsights";
-import FinancialReports from "./pages/FinancialReports";
+const FinancialReports = lazy(() => import("./pages/FinancialReports"));
 import ManageExpenses from "./pages/ManageExpenses";
 import TaxCenter from "./pages/TaxCenter";
 import TeamManagement from "./pages/TeamManagement";
@@ -29,15 +30,11 @@ import Settings from "./pages/Settings";
 
 import "./App.css";
 
-function App() {
+function AppRoutes() {
+  const location = useLocation();
+
   return (
-    <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <AuthProvider>
-        <RoleProvider>
-          <SubscriptionProvider>
-            <DataSourceProvider>
-              <ScrollToTop />
-              <Routes>
+    <Routes location={location} key={location.pathname}>
 
           {/* --- PUBLIC ROUTES --- */}
           <Route path="/login" element={<Login />} />
@@ -142,7 +139,9 @@ function App() {
             path="/financial-reports"
             element={
               <ProtectedRoute>
-                <FinancialReports />
+                <Suspense fallback={<div style={{ padding: "20px", textAlign: "center" }}>Loading...</div>}>
+                  <FinancialReports />
+                </Suspense>
               </ProtectedRoute>
             }
           />
@@ -205,6 +204,18 @@ function App() {
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
 
         </Routes>
+  );
+}
+
+function App() {
+  return (
+    <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <AuthProvider>
+        <RoleProvider>
+          <SubscriptionProvider>
+            <DataSourceProvider>
+              <ScrollToTop />
+              <AppRoutes />
             </DataSourceProvider>
           </SubscriptionProvider>
         </RoleProvider>

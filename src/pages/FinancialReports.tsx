@@ -359,7 +359,7 @@ export default function FinancialReports() {
 
   // Listen for Shopify connection/disconnection AND manual sales changes AND Square changes
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout | null = null;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
     
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "shopifyConnected" || e.key === "shopifyProducts" || e.key === "shopifySales" || 
@@ -417,15 +417,18 @@ export default function FinancialReports() {
       window.removeEventListener("expensesUpdated", handleExpensesUpdated);
       window.removeEventListener("squareDataSynced", handleSquareDataSynced);
     };
-  }, []);
+  }, [location.pathname]);
   
   // State for monthly data
   const [monthlyData, setMonthlyData] = useState<any[]>([]);
 
   // data sources - use selected source (Shopify, Square, or manual)
-  const products: Product[] = isShopifyConnected() ? getShopifyProductsFromStorage() : getProducts();
-  const sales: Sale[] = readSales(dataSource);
-  const operatingExpenses = expenses;
+  const products: Product[] = useMemo(
+    () => isShopifyConnected() ? getShopifyProductsFromStorage() : getProducts(),
+    []
+  );
+  const sales: Sale[] = useMemo(() => readSales(dataSource), [dataSource]);
+  const operatingExpenses = useMemo(() => expenses, [expenses]);
 
   // Generate monthly data for charts
   useEffect(() => {
