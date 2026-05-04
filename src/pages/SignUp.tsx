@@ -27,7 +27,7 @@ export default function SignUp() {
   const [showCountryDropdown, setShowCountryDropdown] = useState(false);
   const [showStateDropdown, setShowStateDropdown] = useState(false);
   const navigate = useNavigate();
-  const formRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   // Close dropdowns when clicking outside
   useEffect(() => {

@@ -9,6 +9,7 @@ import { useAuth } from "../context/AuthContext";
 import { useSubscription } from "../context/SubscriptionContext";
 import { getAIInsights, AIInsight } from "../utils/aiInsightsService";
 import { isShopifyConnected } from "../utils/shopifyDataFetcher";
+import { getFromUserStorage } from "../utils/storageUtils";
 import "../styles/AIInsights.css";
 
 type Insight = AIInsight;
@@ -51,7 +52,7 @@ export default function AIInsights() {
         console.log("🚀 Loading AI insights for user:", user.uid);
         
         // Always check fresh connection status
-        const isConnected = localStorage.getItem("shopifyConnected") === "true";
+        const isConnected = getFromUserStorage<boolean>("shopifyConnected") || false;
         console.log("📡 Fresh Shopify connected check:", isConnected);
         setShopifyConnected(isConnected);
         
@@ -81,7 +82,7 @@ export default function AIInsights() {
 
     // Poll for Shopify connection every 1 second for more responsive updates
     const pollInterval = setInterval(() => {
-      const currentStatus = localStorage.getItem("shopifyConnected") === "true";
+      const currentStatus = getFromUserStorage<boolean>("shopifyConnected") || false;
       setShopifyConnected(prevStatus => {
         if (currentStatus !== prevStatus) {
           console.log("📡 Shopify status changed to:", currentStatus);

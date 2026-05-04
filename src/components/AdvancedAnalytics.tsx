@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { generateAdvancedAnalytics, getAnalyticsMetrics, formatAsCurrency } from "../utils/advancedAnalytics";
+import { getFromUserStorage } from "../utils/storageUtils";
 import "../styles/AdvancedAnalytics.css";
 
 interface AdvancedAnalyticsProps {
@@ -38,20 +39,17 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({
 
     try {
       setLoading(true);
-      const productsData = localStorage.getItem("shopifyProducts");
-      const salesData = localStorage.getItem("shopifySales");
+      const productsData = getFromUserStorage<any[]>("shopifyProducts");
+      const salesData = getFromUserStorage<any[]>("shopifySales");
 
-      if (!productsData || !salesData) {
+      if (!productsData || productsData.length === 0 || !salesData || salesData.length === 0) {
         setAnalytics(null);
         setError("No data available. Connect Shopify to view analytics.");
         setLoading(false);
         return;
       }
 
-      const products = JSON.parse(productsData);
-      const sales = JSON.parse(salesData);
-
-      const report = generateAdvancedAnalytics(products, sales);
+      const report = generateAdvancedAnalytics(productsData, salesData);
 
       setAnalytics({
         totalRevenue: report.totalRevenue,

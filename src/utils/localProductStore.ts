@@ -2,6 +2,8 @@
 // LOCAL STORAGE PRODUCT STORE (NO BACKEND)
 // =========================================
 
+import { getFromUserStorage, setInUserStorage, removeFromUserStorage } from './storageUtils';
+
 export interface Product {
   id: string;
   name: string;
@@ -21,8 +23,7 @@ export interface Product {
 =========================================================== */
 export function getProducts(): Product[] {
   try {
-    const data = localStorage.getItem("products");
-    const products = data ? JSON.parse(data) : [];
+    const products = getFromUserStorage<Product[]>("products") || [];
     console.log("📦 getProducts:", products.length, "products found");
     if (products.length > 0) {
       products.forEach((p, i) => {
@@ -45,7 +46,7 @@ function saveProducts(products: Product[]) {
     const sizeInKB = jsonStr.length / 1024;
     console.log("💾 Saving", products.length, "products, size:", sizeInKB.toFixed(2), "KB");
     
-    localStorage.setItem("products", jsonStr);
+    setInUserStorage("products", products);
     console.log("✅ Products saved successfully");
   } catch (err) {
     console.error("❌ Error saving products:", err);
@@ -132,5 +133,5 @@ export function increaseStock(id: string, qty: number) {
     CLEAR ALL PRODUCTS (DEVELOPMENT ONLY)
 =========================================================== */
 export function clearAllProducts() {
-  localStorage.removeItem("products");
+  removeFromUserStorage("products");
 }

@@ -1,17 +1,20 @@
-export const getIntegrations = () =>
-  JSON.parse(localStorage.getItem("connectedIntegrations") || "[]");
+import { getFromUserStorage, setInUserStorage } from './storageUtils';
+
+export const getIntegrations = () => {
+  return getFromUserStorage<string[]>("connectedIntegrations") || [];
+};
 
 export const addIntegration = (name: string) => {
   const list = getIntegrations();
   if (!list.includes(name)) {
-    localStorage.setItem("connectedIntegrations", JSON.stringify([...list, name]));
+    setInUserStorage("connectedIntegrations", [...list, name]);
   }
 };
 
 export const removeIntegration = (name: string) => {
   const list = getIntegrations();
   const filtered = list.filter((item: string) => item !== name);
-  localStorage.setItem("connectedIntegrations", JSON.stringify(filtered));
+  setInUserStorage("connectedIntegrations", filtered);
 };
 
 export const isIntegrationConnected = (name: string) => {

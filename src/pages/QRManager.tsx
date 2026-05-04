@@ -7,6 +7,7 @@ import Sidebar from "../components/Sidebar";
 import { useRole } from "../context/RoleContext";
 import { hasPermission } from "../utils/rolePermissions";
 import { useSubscription } from "../context/SubscriptionContext";
+import { getFromUserStorage } from "../utils/storageUtils";
 import "../styles/QRManager.css";
 
 export default function QRManager() {
@@ -17,11 +18,11 @@ export default function QRManager() {
   const { tier, trialExpired } = useSubscription();
   const [userProfile, setUserProfile] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("qr");
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState<any[]>([]);
   const [showScanner, setShowScanner] = useState(false);
 
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem("products") || "[]");
+    const stored = getFromUserStorage<any[]>("products") || [];
     setProducts(stored);
     
     const storedProfile = localStorage.getItem("userProfile");

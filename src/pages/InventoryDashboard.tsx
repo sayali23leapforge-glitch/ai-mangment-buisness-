@@ -6,6 +6,7 @@ import { ShoppingCart, Barcode, Plus, LineChart, Package, AlertTriangle, Sparkle
 import TopBar from "../components/TopBar";
 import Sidebar from "../components/Sidebar";
 import { getProducts, Product } from "../utils/localProductStore";
+import { getFromUserStorage } from "../utils/storageUtils";
 import { useRole } from "../context/RoleContext";
 import { hasPermission } from "../utils/rolePermissions";
 import { 
@@ -141,8 +142,8 @@ export default function InventoryDashboard() {
     
     // Check Shopify
     if (isShopifyConnected()) {
-      const lastSyncTime = localStorage.getItem("shopifyLastSyncTime");
-      const lastSync = lastSyncTime ? new Date(Number(lastSyncTime)).toLocaleString() : "Recently synced";
+      const lastSyncTime = getFromUserStorage<number>("shopifyLastSyncTime");
+      const lastSync = lastSyncTime ? new Date(lastSyncTime).toLocaleString() : "Recently synced";
       apps.push({
         id: 1,
         name: "Shopify",
@@ -161,10 +162,9 @@ export default function InventoryDashboard() {
     }
 
     // Check QuickBooks
-    const qbCredentials = localStorage.getItem("quickbooksCredentials");
+    const qbCredentials = getFromUserStorage<any>("quickbooksCredentials");
     if (qbCredentials) {
       try {
-        const creds = JSON.parse(qbCredentials);
         apps.push({
           id: 2,
           name: "QuickBooks",

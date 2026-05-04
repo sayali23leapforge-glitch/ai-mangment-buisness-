@@ -10,6 +10,7 @@ import { useDataSource } from "../context/DataSourceContext";
 import { hasPermission } from "../utils/rolePermissions";
 import { getProducts, Product } from "../utils/localProductStore";
 import { isShopifyConnected, getShopifyProductsFromStorage, getShopifySalesFromStorage } from "../utils/shopifyDataFetcher";
+import { getFromUserStorage, setInUserStorage } from "../utils/storageUtils";
 import "../styles/FinancialReports.css";
 
 type ExpenseLine = {
@@ -31,8 +32,8 @@ interface Sale {
 // Check if Square is connected
 function isSquareConnected(): boolean {
   try {
-    const squareData = localStorage.getItem("squareConnected");
-    return squareData === "true";
+    const squareData = getFromUserStorage<boolean>("squareConnected") || false;
+    return squareData;
   } catch {
     return false;
   }
@@ -41,8 +42,7 @@ function isSquareConnected(): boolean {
 // Get Square payments data
 function getSquarePaymentsFromStorage(): any[] {
   try {
-    const data = localStorage.getItem("squarePayments");
-    return data ? JSON.parse(data) : [];
+    return getFromUserStorage<any[]>("squarePayments") || [];
   } catch {
     return [];
   }
@@ -127,8 +127,7 @@ function getTotalFailedAmount(): number {
 // Get Square orders data
 function getSquareOrdersFromStorage(): any[] {
   try {
-    const data = localStorage.getItem("squareOrders");
-    return data ? JSON.parse(data) : [];
+    return getFromUserStorage<any[]>("squareOrders") || [];
   } catch {
     return [];
   }
@@ -239,9 +238,8 @@ function readOperatingExpenses(): ExpenseLine[] {
   });
 
   try {
-    const raw = localStorage.getItem("businessExpenses");
-    if (raw) {
-      const expenses = JSON.parse(raw);
+    const expenses = getFromUserStorage<any[]>("businessExpenses");
+    if (expenses) {
       // Filter for operating expenses only
       const operatingOnly = expenses.filter((e: any) => e.type === "operating");
       if (Array.isArray(operatingOnly) && operatingOnly.length > 0) {
@@ -267,9 +265,8 @@ function readOperatingExpenses(): ExpenseLine[] {
 // Read product cost expenses (COGS from Manage Expenses)
 function readProductCostExpenses(): number {
   try {
-    const raw = localStorage.getItem("businessExpenses");
-    if (raw) {
-      const expenses = JSON.parse(raw);
+    const expenses = getFromUserStorage<any[]>("businessExpenses");
+    if (expenses) {
       // Filter for product costs only and sum them
       const productCosts = expenses
         .filter((e: any) => e.type === "product_cost")
@@ -297,7 +294,7 @@ export default function FinancialReports() {
   const [productCostExpenses, setProductCostExpenses] = useState<number>(() => readProductCostExpenses());
   const [userProfile, setUserProfile] = useState<any>(null);
   const [taxRate] = useState<number>(() => {
-    const t = localStorage.getItem("taxRate");
+    const t = getFromUserStorage<number>("taxRate");
     return t ? Number(t) : 15;
   });
   const [, setDataRefresh] = useState(0); // Trigger re-render on data changes
@@ -307,18 +304,18 @@ export default function FinancialReports() {
     if (storedProfile) setUserProfile(JSON.parse(storedProfile));
 
     // Initialize with realistic business data
-    const existingSales = localStorage.getItem("sales");
-    const existingProducts = localStorage.getItem("products");
+    const existingSales = getFromUserStorage<any[]>("sales");
+    const existingProducts = getFromUserStorage<any[]>("products");
 
-    if (!existingSales) {
+    if (!existingSales || existingSales.length === 0) {
       const sampleSales = [
         { id: "s1", productName: "Product A", amount: 500000, date: "2026-03-01", timestamp: "2026-03-01", quantity: 100, items: [{ productId: "p1", quantity: 100, price: 5000 }], total: 500000, subtotal: 500000 },
         { id: "s2", productName: "Product B", amount: 379000, date: "2026-03-05", timestamp: "2026-03-05", quantity: 50, items: [{ productId: "p2", quantity: 50, price: 7580 }], total: 379000, subtotal: 379000 },
       ];
-      localStorage.setItem("sales", JSON.stringify(sampleSales));
+      setInUserStorage("sales", sampleSales);
     }
 
-    if (!existingProducts) {
+    if (!existingProducts || existingProducts.length === 0) {
       const sampleProducts = [
         { 
           id: "p1", 
@@ -351,7 +348,7 @@ export default function FinancialReports() {
           reorderLevel: 60
         },
       ];
-      localStorage.setItem("products", JSON.stringify(sampleProducts));
+      setInUserStorage("products", sampleProducts);
     }
 
     setDataRefresh(prev => prev + 1);

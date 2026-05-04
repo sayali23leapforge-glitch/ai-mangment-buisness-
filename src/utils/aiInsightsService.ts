@@ -6,6 +6,7 @@ import {
   getShopifySalesFromStorage 
 } from "./shopifyDataFetcher";
 import { getProducts } from "./localProductStore";
+import { getFromUserStorage } from "./storageUtils";
 
 const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY || "your-openai-api-key-here";
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
@@ -150,8 +151,7 @@ export const getSalesData = async (userId: string): Promise<Sale[]> => {
 // Helper function to get local sales from localStorage
 const getLocalSales = (): Sale[] => {
   try {
-    const data = localStorage.getItem("sales");
-    return data ? JSON.parse(data) : [];
+    return getFromUserStorage<Sale[]>("sales") || [];
   } catch (error) {
     console.error("Error reading local sales:", error);
     return [];

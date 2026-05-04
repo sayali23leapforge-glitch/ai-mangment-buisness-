@@ -5,6 +5,7 @@
  */
 
 import { auth } from "../config/firebase";
+import { setInUserStorage, getFromUserStorage } from "./storageUtils";
 
 const getAuthToken = async () => {
   const user = auth.currentUser;
@@ -54,11 +55,11 @@ export const syncShopifyFinancialData = async () => {
 
     const financialMetrics = calculateFinancialMetrics(data.orders || []);
 
-    localStorage.setItem("shopifyFinancialData", JSON.stringify(financialMetrics));
+    setInUserStorage("shopifyFinancialData", financialMetrics);
 
     if (data.products && data.products.length > 0) {
       const inventoryData = transformInventoryData(data.products);
-      localStorage.setItem("shopifyInventoryData", JSON.stringify(inventoryData));
+      setInUserStorage("shopifyInventoryData", inventoryData);
     }
 
     return {
@@ -207,9 +208,7 @@ export const transformInventoryData = (products: any[]) => {
  */
 export const getStoredFinancialData = () => {
   try {
-    const data = localStorage.getItem("shopifyFinancialData");
-    if (!data) return null;
-    return JSON.parse(data);
+    return getFromUserStorage("shopifyFinancialData") || null;
   } catch (error) {
     console.error("Error getting financial data:", error);
     return null;
@@ -221,9 +220,7 @@ export const getStoredFinancialData = () => {
  */
 export const getStoredInventoryData = () => {
   try {
-    const data = localStorage.getItem("shopifyInventoryData");
-    if (!data) return null;
-    return JSON.parse(data);
+    return getFromUserStorage("shopifyInventoryData") || null;
   } catch (error) {
     console.error("Error getting inventory data:", error);
     return null;

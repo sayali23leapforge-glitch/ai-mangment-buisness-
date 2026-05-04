@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { convertCurrency, getSupportedCurrencies, formatCurrency } from "../utils/multiCurrency";
+import { getFromUserStorage, setInUserStorage } from "../utils/storageUtils";
 import "../styles/CurrencyConverter.css";
 
 interface CurrencyConverterProps {
@@ -26,16 +27,15 @@ const CurrencyConverter: React.FC<CurrencyConverterProps> = ({
   const convertPrices = async () => {
     try {
       setLoading(true);
-      const productsData = localStorage.getItem("shopifyProducts");
+      const productsData = getFromUserStorage<any[]>("shopifyProducts");
 
-      if (!productsData) {
+      if (!productsData || productsData.length === 0) {
         console.log("No products found to convert");
         setLoading(false);
         return;
       }
 
-      const products = JSON.parse(productsData);
-      const converted = products.map((product: any) => ({
+      const converted = productsData.map((product: any) => ({
         name: product.name,
         originalPrice: product.price,
         convertedPrice: convertCurrency(product.price, "USD", selectedCurrency),
@@ -44,7 +44,7 @@ const CurrencyConverter: React.FC<CurrencyConverterProps> = ({
       setConvertedPrices(converted);
 
       // Store the selected currency for the app
-      localStorage.setItem("selectedCurrency", selectedCurrency);
+      setInUserStorage("selectedCurrency", selectedCurrency);
       onCurrencyChange?.(selectedCurrency);
 
       console.log(`✅ Multi-Currency: Converted prices to ${selectedCurrency}`);

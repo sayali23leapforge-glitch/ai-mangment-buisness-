@@ -6,6 +6,7 @@ import Sidebar from "../components/Sidebar";
 import { useRole } from "../context/RoleContext";
 import { hasPermission } from "../utils/rolePermissions";
 import { useAuth } from "../context/AuthContext";
+import { getFromUserStorage } from "../utils/storageUtils";
 import "../styles/Settings.css";
 
 interface UserProfile {
@@ -215,8 +216,8 @@ const Settings: React.FC = () => {
   const handleExportProducts = () => {
     try {
       // Get products from localStorage
-      const products = JSON.parse(localStorage.getItem("products") || "[]");
-      const shopifyProducts = JSON.parse(localStorage.getItem("shopifyProducts") || "[]");
+      const products = getFromUserStorage<any[]>("products") || [];
+      const shopifyProducts = getFromUserStorage<any[]>("shopifyProducts") || [];
       const allProducts = products.length > 0 ? products : shopifyProducts;
       
       if (allProducts.length === 0) {
@@ -242,8 +243,8 @@ const Settings: React.FC = () => {
   const handleExportSales = () => {
     try {
       // Get sales from localStorage
-      const sales = JSON.parse(localStorage.getItem("sales") || "[]");
-      const shopifySales = JSON.parse(localStorage.getItem("shopifySales") || "[]");
+      const sales = getFromUserStorage<any[]>("sales") || [];
+      const shopifySales = getFromUserStorage<any[]>("shopifySales") || [];
       const allSales = sales.length > 0 ? sales : shopifySales;
       
       if (allSales.length === 0) {

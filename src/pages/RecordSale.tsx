@@ -6,6 +6,7 @@ import Sidebar from "../components/Sidebar";
 import { getProducts, reduceStock, Product } from "../utils/localProductStore";
 import { useRole } from "../context/RoleContext";
 import { hasPermission } from "../utils/rolePermissions";
+import { getFromUserStorage, setInUserStorage } from "../utils/storageUtils";
 import "../styles/RecordSale.css";
 
 export default function RecordSale() {
@@ -22,7 +23,7 @@ export default function RecordSale() {
 
   // Tax rate
   const [taxRate] = useState<number>(() => {
-    const t = localStorage.getItem("taxRate");
+    const t = getFromUserStorage<number>("taxRate");
     return t ? Number(t) : 15;
   });
 
@@ -146,10 +147,9 @@ export default function RecordSale() {
     });
     
     // Save to localStorage for FinancialReports
-    const existingSales = localStorage.getItem("sales");
-    const salesArray = existingSales ? JSON.parse(existingSales) : [];
-    salesArray.push(saleObject);
-    localStorage.setItem("sales", JSON.stringify(salesArray));
+    const existingSales = getFromUserStorage<any[]>("sales") || [];
+    existingSales.push(saleObject);
+    setInUserStorage("sales", existingSales);
     
     // 🔔 Dispatch custom event to notify other components (same tab)
     window.dispatchEvent(new CustomEvent("salesUpdated", { detail: saleObject }));

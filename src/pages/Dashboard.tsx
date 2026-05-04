@@ -28,6 +28,7 @@ import {
 import { getStoredFinancialData, syncShopifyFinancialData } from "../utils/shopifyFinancialSync";
 import { checkLowStock } from "../utils/smartNotifications";
 import { setupOfflineLiveMode, saveProductsOffline } from "../utils/offlineMode";
+import { getFromUserStorage } from "../utils/storageUtils";
 import AdvancedAnalytics from "../components/AdvancedAnalytics";
 import "../styles/Dashboard.css";
 
@@ -51,8 +52,8 @@ interface Sale {
 // Check if Square is connected
 function isSquareConnected(): boolean {
   try {
-    const squareData = localStorage.getItem("squareConnected");
-    return squareData === "true";
+    const squareData = getFromUserStorage<boolean>("squareConnected") || false;
+    return squareData;
   } catch {
     return false;
   }
@@ -61,17 +62,18 @@ function isSquareConnected(): boolean {
 // Get Square orders as Sales (COMPLETED only)
 function getSquareSalesFromStorage(): Sale[] {
   try {
-    const ordersJson = localStorage.getItem("squareOrders");
-    if (!ordersJson) {
+    const ordersJson = getFromUserStorage<any[]>("squareOrders");
+    if (!ordersJson || ordersJson.length === 0) {
       console.warn("⚠️ No squareOrders in localStorage");
       return [];
     }
     
-    const orderData = JSON.parse(ordersJson);
-    if (!Array.isArray(orderData)) {
-      console.warn("⚠️ squareOrders is not an array:", typeof orderData);
+    if (!Array.isArray(ordersJson)) {
+      console.warn("⚠️ squareOrders is not an array:", typeof ordersJson);
       return [];
     }
+
+    const orderData = ordersJson;
 
     // Filter to only COMPLETED orders for financial calculations
     const completedOrders = orderData.filter((order: any) => order.state === 'COMPLETED');
@@ -90,7 +92,7 @@ function getSquareSalesFromStorage(): Sale[] {
       };
     });
     
-    console.log(`✅ Converted ${converted.length} COMPLETED orders - Total revenue: $${converted.reduce((sum, s) => sum + s.amount, 0)}`);
+    console.log(`✅ Converted ${converted.length} COMPLETED orders - Total revenue: $${converted.reduce((sum: number, s: any) => sum + s.amount, 0)}`);
     return converted;
   } catch (err) {
     console.error("❌ Error converting Square data:", err);
@@ -141,8 +143,10 @@ export default function Dashboard() {
           console.log(`\n🎯 DASHBOARD LOAD CHECK (Square):`);
           console.log(`   ✓ Square IS connected! Loading data...`);
           console.log(`   📦 Checking localStorage...`);
-          console.log(`      squareOrders length:`, localStorage.getItem("squareOrders")?.length || 0);
-          console.log(`      squarePayments length:`, localStorage.getItem("squarePayments")?.length || 0);
+          const squareOrders = getFromUserStorage<any[]>("squareOrders") || [];
+          const squarePayments = getFromUserStorage<any[]>("squarePayments") || [];
+          console.log(`      squareOrders length:`, squareOrders.length);
+          console.log(`      squarePayments length:`, squarePayments.length);
           
           const squareSales = getSquareSalesFromStorage();
           console.log(`   📊 Square sales converted from orders:`, squareSales.length, squareSales);
@@ -156,8 +160,8 @@ export default function Dashboard() {
         else if (dataSource === "shopify" && isShopifyConnected()) {
           console.log(`\n📊 DASHBOARD LOAD CHECK (Shopify):`);
           
-          const shopifyConnected = localStorage.getItem("shopifyConnected") === "true";
-          const shopifyStoreUrl = localStorage.getItem("shopifyStoreUrl");
+          const shopifyConnected = getFromUserStorage<boolean>("shopifyConnected") || false;
+          const shopifyStoreUrl = getFromUserStorage<string>("shopifyStoreUrl");
           
           console.log(`   ✓ shopifyConnected: ${shopifyConnected}`);
           console.log(`   ✓ shopifyStoreUrl: ${shopifyStoreUrl}`);

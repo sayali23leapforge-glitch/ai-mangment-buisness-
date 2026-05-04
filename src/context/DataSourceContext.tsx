@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { getFromUserStorage, setInUserStorage } from "../utils/storageUtils";
 
 type DataSource = "shopify" | "square";
 
@@ -12,13 +13,13 @@ const DataSourceContext = createContext<DataSourceContextType | undefined>(undef
 export function DataSourceProvider({ children }: { children: ReactNode }) {
   const [dataSource, setDataSourceState] = useState<DataSource>(() => {
     // Load from localStorage on first mount
-    const saved = localStorage.getItem("selectedDataSource");
-    return (saved as DataSource) || "shopify";
+    const saved = getFromUserStorage<DataSource>("selectedDataSource");
+    return saved || "shopify";
   });
 
   // Save to localStorage whenever it changes
   useEffect(() => {
-    localStorage.setItem("selectedDataSource", dataSource);
+    setInUserStorage("selectedDataSource", dataSource);
     console.log("🔄 Global data source changed to:", dataSource);
   }, [dataSource]);
 

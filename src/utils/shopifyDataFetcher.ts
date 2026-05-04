@@ -4,6 +4,7 @@
  */
 
 import { auth } from "../config/firebase";
+import { setInUserStorage, getFromUserStorage, removeFromUserStorage } from "./storageUtils";
 
 // Backend port — always 3001 in development, or same origin in production
 let BACKEND_PORT = "3001";
@@ -287,11 +288,11 @@ export const syncShopifyToLocalStorageWithAuth = async () => {
     const convertedProducts = convertShopifyProducts(products);
     const convertedOrders = convertShopifyOrders(orders);
 
-    localStorage.setItem("shopifyProducts", JSON.stringify(convertedProducts));
-    localStorage.setItem("shopifySales", JSON.stringify(convertedOrders));
-    localStorage.setItem("shopifyInventory", JSON.stringify(inventoryLevels));
-    localStorage.setItem("shopifyConnected", "true");
-    localStorage.setItem("shopifyLastSyncTime", String(data.lastSyncTime || Date.now()));
+    setInUserStorage("shopifyProducts", convertedProducts);
+    setInUserStorage("shopifySales", convertedOrders);
+    setInUserStorage("shopifyInventory", inventoryLevels);
+    setInUserStorage("shopifyConnected", true);
+    setInUserStorage("shopifyLastSyncTime", data.lastSyncTime || Date.now());
 
     console.log(`✅ Synced: ${convertedProducts.length} products, ${convertedOrders.length} orders`);
 
@@ -334,16 +335,13 @@ export const syncShopifyToLocalStorage = async (
     console.log("Converted products with images:", convertedProducts);
 
     // Store in localStorage
-    localStorage.setItem(
-      "shopifyProducts",
-      JSON.stringify(convertedProducts)
-    );
-    localStorage.setItem("shopifySales", JSON.stringify(convertedOrders));
-    localStorage.setItem("shopifyInventory", JSON.stringify(inventory));
+    setInUserStorage("shopifyProducts", convertedProducts);
+    setInUserStorage("shopifySales", convertedOrders);
+    setInUserStorage("shopifyInventory", inventory);
 
     // Mark Shopify as active & store credentials
-    localStorage.setItem("shopifyConnected", "true");
-    localStorage.setItem("shopifyUrl", shopUrl);
+    setInUserStorage("shopifyConnected", true);
+    setInUserStorage("shopifyUrl", shopUrl);
 
     console.log(
       `Synced ${convertedProducts.length} products and ${convertedOrders.length} orders from Shopify`
@@ -368,10 +366,9 @@ export const syncShopifyToLocalStorage = async (
  * Get Shopify products from localStorage
  */
 export const getShopifyProductsFromStorage = () => {
-  const data = localStorage.getItem("shopifyProducts");
-  const parsed = data ? JSON.parse(data) : [];
-  console.log("🏪 getShopifyProductsFromStorage:", parsed.length > 0 ? `${parsed.length} products` : "empty");
-  return parsed;
+  const data = getFromUserStorage<any[]>("shopifyProducts") || [];
+  console.log("🏪 getShopifyProductsFromStorage:", data.length > 0 ? `${data.length} products` : "empty");
+  return data;
 };
 
 /**
@@ -404,7 +401,7 @@ export const refreshShopifyProducts = async () => {
 
     if (freshProducts && freshProducts.length > 0) {
       const converted = convertShopifyProducts(freshProducts);
-      localStorage.setItem("shopifyProducts", JSON.stringify(converted));
+      setInUserStorage("shopifyProducts", converted);
       console.log("✅ Refreshed", freshProducts.length, "products from Shopify API");
       return { success: true, count: freshProducts.length };
     } else {
@@ -421,17 +418,16 @@ export const refreshShopifyProducts = async () => {
  * Get Shopify sales from localStorage
  */
 export const getShopifySalesFromStorage = () => {
-  const data = localStorage.getItem("shopifySales");
-  const parsed = data ? JSON.parse(data) : [];
-  console.log("💳 getShopifySalesFromStorage:", parsed.length > 0 ? `${parsed.length} sales` : "empty");
-  return parsed;
+  const data = getFromUserStorage<any[]>("shopifySales") || [];
+  console.log("💳 getShopifySalesFromStorage:", data.length > 0 ? `${data.length} sales` : "empty");
+  return data;
 };
 
 /**
  * Check if Shopify is connected
  */
 export const isShopifyConnected = () => {
-  const connected = localStorage.getItem("shopifyConnected") === "true";
+  const connected = getFromUserStorage<boolean>("shopifyConnected") || false;
   console.log("🔌 isShopifyConnected:", connected);
   return connected;
 };
@@ -440,19 +436,19 @@ export const isShopifyConnected = () => {
  * Get connected Shopify URL
  */
 export const getConnectedShopifyUrl = () => {
-  return localStorage.getItem("shopifyUrl") || null;
+  return getFromUserStorage<string>("shopifyUrl") || null;
 };
 
 /**
  * Disconnect Shopify
  */
 export const disconnectShopify = () => {
-  localStorage.removeItem("shopifyProducts");
-  localStorage.removeItem("shopifySales");
-  localStorage.removeItem("shopifyConnected");
-  localStorage.removeItem("shopifyUrl");
-  localStorage.removeItem("shopifyAccessToken");
-  localStorage.removeItem("shopifyLastSyncTime");
+  removeFromUserStorage("shopifyProducts");
+  removeFromUserStorage("shopifySales");
+  removeFromUserStorage("shopifyConnected");
+  removeFromUserStorage("shopifyUrl");
+  removeFromUserStorage("shopifyAccessToken");
+  removeFromUserStorage("shopifyLastSyncTime");
 };
 
 /**
@@ -601,7 +597,7 @@ export const addProductToShopify = async (product: any) => {
             images: product.image ? [{ src: product.image }] : [],
           };
           currentProducts.push(cachedProduct);
-          localStorage.setItem("shopifyProducts", JSON.stringify(currentProducts));
+          setInUserStorage("shopifyProducts", currentProducts);
           console.log("✅ Product cached locally after Shopify sync");
 
           return { 
@@ -645,7 +641,7 @@ export const addProductToShopify = async (product: any) => {
       images: product.image ? [{ src: product.image }] : [],
     };
     currentProducts.push(cachedProduct);
-    localStorage.setItem("shopifyProducts", JSON.stringify(currentProducts));
+    setInUserStorage("shopifyProducts", currentProducts);
     console.log("✅ Product cached locally");
 
     return {
@@ -678,7 +674,7 @@ export const addProductToShopify = async (product: any) => {
         images: product.image ? [{ src: product.image }] : [],
       };
       currentProducts.push(cachedProduct);
-      localStorage.setItem("shopifyProducts", JSON.stringify(currentProducts));
+      setInUserStorage("shopifyProducts", currentProducts);
       return { success: true, message: "Product cached locally", product: cachedProduct };
     } catch (cacheError) {
       return { success: false, error: error instanceof Error ? error.message : "Unknown error" };

@@ -5,6 +5,7 @@ import TopBar from "../components/TopBar";
 import Sidebar from "../components/Sidebar";
 import { useRole } from "../context/RoleContext";
 import { hasPermission } from "../utils/rolePermissions";
+import { getFromUserStorage } from "../utils/storageUtils";
 import {
   addProduct,
 } from "../utils/localProductStore";
@@ -190,7 +191,7 @@ export default function AddProduct() {
     console.log("✅ Product saved to local storage");
 
     // Check Shopify connection status
-    const shopifyStatus = localStorage.getItem("shopifyConnected");
+    const shopifyStatus = getFromUserStorage<boolean>("shopifyConnected");
     console.log("🔌 Shopify connection status in localStorage:", shopifyStatus);
     const isConnected = isShopifyConnected();
     console.log("🔌 isShopifyConnected() result:", isConnected);

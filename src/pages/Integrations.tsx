@@ -16,6 +16,7 @@ import { formatLastSyncTime } from "../utils/shopifySync";
 import { syncAllQuickBooksData } from "../utils/quickbooksSync";
 import { fetchShopifyStatus, syncShopifyToLocalStorageWithAuth } from "../utils/shopifyDataFetcher";
 import { syncShopifyFinancialData } from "../utils/shopifyFinancialSync";
+import { getFromUserStorage, setInUserStorage, removeFromUserStorage } from "../utils/storageUtils";
 import { getApiUrl } from "../config/api";
 import "../styles/Dashboard.css";
 import "../styles/Integrations.css";
@@ -78,8 +79,8 @@ const Integrations = () => {
   }
 
   const [autoSyncEnabled, setAutoSyncEnabled] = useState(() => {
-    const saved = localStorage.getItem("autoSyncEnabled");
-    return saved ? JSON.parse(saved) : true;
+    const saved = getFromUserStorage<boolean>("autoSyncEnabled");
+    return saved !== null ? saved : true;
   });
   const [activeTab, setActiveTab] = useState("all");
   const sidebarNavRef = useRef<HTMLDivElement>(null);
@@ -99,7 +100,7 @@ const Integrations = () => {
 
   // Save auto-sync preference to localStorage
   useEffect(() => {
-    localStorage.setItem("autoSyncEnabled", JSON.stringify(autoSyncEnabled));
+    setInUserStorage("autoSyncEnabled", autoSyncEnabled);
   }, [autoSyncEnabled]);
 
   useEffect(() => {
@@ -159,7 +160,7 @@ const Integrations = () => {
       );
     } else {
       // Fallback: check localStorage in case Firestore save was slow
-      const shopifyStoreUrl = localStorage.getItem("shopifyStoreUrl");
+      const shopifyStoreUrl = getFromUserStorage<string>("shopifyStoreUrl");
       if (shopifyStoreUrl) {
         setShopifyConnected(true);
         setShopifyData({ shopName: shopifyStoreUrl, lastSync: "Just now" });
@@ -203,8 +204,8 @@ const Integrations = () => {
 
   const loadSquareStatus = () => {
     // Check localStorage for persisted Square connection
-    const isConnected = localStorage.getItem("squareConnected") === "true";
-    const squareDataStr = localStorage.getItem("squareData");
+    const isConnected = getFromUserStorage<boolean>("squareConnected") || false;
+    const squareDataStr = getFromUserStorage<any>("squareData");
     
     if (isConnected && squareDataStr) {
       try {
@@ -236,8 +237,8 @@ const Integrations = () => {
         console.error("❌ Failed to parse Square data:", error);
         setSquareConnected(false);
         setSquareData(null);
-        localStorage.removeItem("squareConnected");
-        localStorage.removeItem("squareData");
+        removeFromUserStorage("squareConnected");
+        removeFromUserStorage("squareData");
       }
     } else {
       setSquareConnected(false);
@@ -322,10 +323,10 @@ const Integrations = () => {
         setShopifyData(null);
         
         // Clear localStorage Shopify data
-        localStorage.removeItem("shopifyConnected");
-        localStorage.removeItem("shopifyProducts");
-        localStorage.removeItem("shopifySales");
-        localStorage.removeItem("shopifyLastSyncTime");
+        removeFromUserStorage("shopifyConnected");
+        removeFromUserStorage("shopifyProducts");
+        removeFromUserStorage("shopifySales");
+        removeFromUserStorage("shopifyLastSyncTime");
         
         setIntegrations((prev) =>
           prev.map((item) =>
@@ -379,10 +380,10 @@ const Integrations = () => {
       
       // AUTOMATICALLY CLEAR OLD SQUARE DATA FIRST
       console.log("🧹 Clearing old Square data from cache...");
-      localStorage.removeItem("squareConnected");
-      localStorage.removeItem("squareData");
-      localStorage.removeItem("squareOrders");
-      localStorage.removeItem("squarePayments");
+      removeFromUserStorage("squareConnected");
+      removeFromUserStorage("squareData");
+      removeFromUserStorage("squareOrders");
+      removeFromUserStorage("squarePayments");
       
       // First, check if backend is configured
       const debugResponse = await fetch(getApiUrl("/square/debug"));
@@ -412,16 +413,16 @@ const Integrations = () => {
 
       if (data.status === "success" && data.data) {
         // Store connection status
-        localStorage.setItem("squareConnected", JSON.stringify(true));
-        localStorage.setItem("squareData", JSON.stringify(data.data));
+        setInUserStorage("squareConnected", true);
+        setInUserStorage("squareData", data.data);
         
         // Store actual orders and payments for Financial Reports
         if (data.data.orders && Array.isArray(data.data.orders)) {
-          localStorage.setItem("squareOrders", JSON.stringify(data.data.orders));
+          setInUserStorage("squareOrders", data.data.orders);
           console.log(`✅ Stored ${data.data.orders.length} Square orders in localStorage`);
         }
         if (data.data.payments && Array.isArray(data.data.payments)) {
-          localStorage.setItem("squarePayments", JSON.stringify(data.data.payments));
+          setInUserStorage("squarePayments", data.data.payments);
           console.log(`✅ Stored ${data.data.payments.length} Square payments in localStorage`);
         }
 
@@ -480,10 +481,10 @@ const Integrations = () => {
         setSquareData(null);
         
         // Clear all localStorage Square data
-        localStorage.removeItem("squareConnected");
-        localStorage.removeItem("squareData");
-        localStorage.removeItem("squareOrders");
-        localStorage.removeItem("squarePayments");
+        removeFromUserStorage("squareConnected");
+        removeFromUserStorage("squareData");
+        removeFromUserStorage("squareOrders");
+        removeFromUserStorage("squarePayments");
         
         setIntegrations((prev) =>
           prev.map((item) =>
@@ -508,8 +509,8 @@ const Integrations = () => {
       
       // AUTOMATICALLY CLEAR OLD DATA BEFORE FETCHING NEW
       console.log("🧹 Clearing old Square data from cache...");
-      localStorage.removeItem("squareOrders");
-      localStorage.removeItem("squarePayments");
+      removeFromUserStorage("squareOrders");
+      removeFromUserStorage("squarePayments");
       
       const response = await fetch(getApiUrl("/square/sync"), {
         method: "POST",
@@ -535,23 +536,23 @@ const Integrations = () => {
 
         // Store fresh orders and payments from the response
         if (data.data?.orders && Array.isArray(data.data.orders)) {
-          localStorage.setItem("squareOrders", JSON.stringify(data.data.orders));
+          setInUserStorage("squareOrders", data.data.orders);
           console.log(`✅ Stored ${data.data.orders.length} fresh Square orders in localStorage`);
         }
         if (data.data?.payments && Array.isArray(data.data.payments)) {
-          localStorage.setItem("squarePayments", JSON.stringify(data.data.payments));
+          setInUserStorage("squarePayments", data.data.payments);
           console.log(`✅ Stored ${data.data.payments.length} fresh Square payments in localStorage`);
         }
 
         // Update main Square data
-        const squareDataStr = localStorage.getItem("squareData");
+        const squareDataStr = getFromUserStorage<any>("squareData");
         if (squareDataStr) {
           try {
             const parsedData = JSON.parse(squareDataStr);
             parsedData.total_payments_synced = data.data?.payments_synced || 0;
             parsedData.total_orders_synced = data.data?.orders_synced || 0;
-            localStorage.setItem("squareData", JSON.stringify(parsedData));
-            localStorage.setItem("squareLastSync", new Date().toISOString());
+            setInUserStorage("squareData", parsedData);
+            setInUserStorage("squareLastSync", new Date().toISOString());
           } catch (err) {
             console.error("Failed to update Square data in localStorage:", err);
           }

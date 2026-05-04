@@ -6,6 +6,7 @@
 import { useState } from "react";
 import { AlertCircle, Loader } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { setInUserStorage } from "../utils/storageUtils";
 import { getApiUrl } from "../config/api";
 import "../styles/ConnectShopify.css";
 
@@ -55,10 +56,10 @@ export default function ConnectShopify({
     setError("");
 
     // Store userId and shop URL in localStorage so we can use them after the OAuth redirect returns
-    localStorage.setItem("shopifyPendingUserId", user.uid);
-    localStorage.setItem("shopifyPendingShop", shop);
+    setInUserStorage("shopifyPendingUserId", user.uid);
+    setInUserStorage("shopifyPendingShop", shop);
     // Also persist as the active store URL for fallback sync paths
-    localStorage.setItem("shopifyStoreUrl", shop);
+    setInUserStorage("shopifyStoreUrl", shop);
 
     // Redirect the whole browser to the backend OAuth start endpoint.
     // Shopify will authorize, then redirect to our /api/shopify/oauth/callback,

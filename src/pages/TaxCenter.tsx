@@ -9,6 +9,7 @@ import { getProducts } from "../utils/localProductStore";
 import { useAuth } from "../context/AuthContext";
 import { useSubscription } from "../context/SubscriptionContext";
 import { isShopifyConnected, getShopifyProductsFromStorage, getShopifySalesFromStorage } from "../utils/shopifyDataFetcher";
+import { getFromUserStorage, setInUserStorage } from "../utils/storageUtils";
 import "../styles/TaxCenter.css";
 
 function fmt(n: number) {
@@ -60,11 +61,11 @@ export default function TaxCenter() {
 
   // tax rates (persisted)
   const [corporateRate, setCorporateRate] = useState<number>(() => {
-    const r = localStorage.getItem("tax_corporate");
+    const r = getFromUserStorage<number>("tax_corporate");
     return r ? Number(r) : 12;
   });
   const [salesTaxRate, setSalesTaxRate] = useState<number>(() => {
-    const r = localStorage.getItem("tax_sales");
+    const r = getFromUserStorage<number>("tax_sales");
     return r ? Number(r) : 13;
   });
   const [, setDataRefresh] = useState(0); // Trigger re-render on data changes
@@ -142,11 +143,11 @@ export default function TaxCenter() {
   }, [totalTax]);
 
   useEffect(() => {
-    localStorage.setItem("tax_corporate", String(corporateRate));
+    setInUserStorage("tax_corporate", corporateRate);
   }, [corporateRate]);
 
   useEffect(() => {
-    localStorage.setItem("tax_sales", String(salesTaxRate));
+    setInUserStorage("tax_sales", salesTaxRate);
   }, [salesTaxRate]);
 
   function handleGenerateTaxReport() {

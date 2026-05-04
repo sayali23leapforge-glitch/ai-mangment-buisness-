@@ -2,6 +2,8 @@
 // MANUAL DATA ENTRY STORE
 // =========================================
 
+import { getFromUserStorage, setInUserStorage, removeFromUserStorage } from './storageUtils';
+
 export interface ManualProduct {
   id: string;
   name: string;
@@ -41,8 +43,7 @@ export interface TaxConfig {
 
 export function getManualProducts(): ManualProduct[] {
   try {
-    const data = localStorage.getItem("manualProducts");
-    return data ? JSON.parse(data) : [];
+    return getFromUserStorage<ManualProduct[]>("manualProducts") || [];
   } catch (err) {
     console.error("Error reading manual products:", err);
     return [];
@@ -51,7 +52,7 @@ export function getManualProducts(): ManualProduct[] {
 
 function saveManualProducts(products: ManualProduct[]) {
   try {
-    localStorage.setItem("manualProducts", JSON.stringify(products));
+    setInUserStorage("manualProducts", products);
   } catch (err) {
     console.error("Error saving manual products:", err);
   }
@@ -96,8 +97,7 @@ export function deleteManualProduct(id: string) {
 
 export function getManualSales(): ManualSale[] {
   try {
-    const data = localStorage.getItem("manualSales");
-    return data ? JSON.parse(data) : [];
+    return getFromUserStorage<ManualSale[]>("manualSales") || [];
   } catch (err) {
     console.error("Error reading manual sales:", err);
     return [];
@@ -106,7 +106,7 @@ export function getManualSales(): ManualSale[] {
 
 function saveManualSales(sales: ManualSale[]) {
   try {
-    localStorage.setItem("manualSales", JSON.stringify(sales));
+    setInUserStorage("manualSales", sales);
   } catch (err) {
     console.error("Error saving manual sales:", err);
   }
@@ -140,8 +140,7 @@ export function deleteManualSale(id: string) {
 
 export function getManualExpenses(): ManualExpense[] {
   try {
-    const data = localStorage.getItem("manualExpenses");
-    return data ? JSON.parse(data) : [];
+    return getFromUserStorage<ManualExpense[]>("manualExpenses") || [];
   } catch (err) {
     console.error("Error reading manual expenses:", err);
     return [];
@@ -150,7 +149,7 @@ export function getManualExpenses(): ManualExpense[] {
 
 function saveManualExpenses(expenses: ManualExpense[]) {
   try {
-    localStorage.setItem("manualExpenses", JSON.stringify(expenses));
+    setInUserStorage("manualExpenses", expenses);
   } catch (err) {
     console.error("Error saving manual expenses:", err);
   }
@@ -183,8 +182,7 @@ export function deleteManualExpense(id: string) {
 
 export function getTaxConfig(): TaxConfig {
   try {
-    const data = localStorage.getItem("taxConfig");
-    return data ? JSON.parse(data) : { taxRate: 15, taxType: "percentage" };
+    return getFromUserStorage<TaxConfig>("taxConfig") || { taxRate: 15, taxType: "percentage" };
   } catch (err) {
     return { taxRate: 15, taxType: "percentage" };
   }
@@ -192,7 +190,7 @@ export function getTaxConfig(): TaxConfig {
 
 export function saveTaxConfig(taxRate: number, taxType: string = "percentage") {
   try {
-    localStorage.setItem("taxConfig", JSON.stringify({ taxRate, taxType }));
+    setInUserStorage("taxConfig", { taxRate, taxType });
   } catch (err) {
     console.error("Error saving tax config:", err);
   }
@@ -250,7 +248,7 @@ export function calculateFinancialSummary(): FinancialSummary {
 }
 
 export function clearAllManualData() {
-  localStorage.removeItem("manualProducts");
-  localStorage.removeItem("manualSales");
-  localStorage.removeItem("manualExpenses");
+  removeFromUserStorage("manualProducts");
+  removeFromUserStorage("manualSales");
+  removeFromUserStorage("manualExpenses");
 }
