@@ -189,6 +189,7 @@ export default function AddProduct() {
     // Save to local storage
     addProduct(newProduct);
     console.log("✅ Product saved to local storage");
+    window.dispatchEvent(new CustomEvent("productsUpdated"));
 
     // Check Shopify connection status
     const shopifyStatus = getFromUserStorage<boolean>("shopifyConnected");

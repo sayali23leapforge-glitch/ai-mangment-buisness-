@@ -23,7 +23,7 @@ export default function InventoryDashboard() {
   const [selectedRole, setSelectedRole] = useState("Owner (Full Access)");
   const [products, setProducts] = useState<Product[]>([]);
 
-  // Load products on mount - Show ONLY Shopify products when connected
+  // Load products on mount - Show Shopify products when connected, otherwise local products
   useEffect(() => {
     let allProducts: Product[] = [];
 
@@ -35,9 +35,9 @@ export default function InventoryDashboard() {
         allProducts = shopifyProducts;
       }
     } else {
-      // When Shopify not connected, show nothing
-      console.log("❌ Shopify not connected - no products to show");
-      allProducts = [];
+      // When Shopify not connected, load from user-specific local storage
+      allProducts = getProducts();
+      console.log("📦 Showing local products in Inventory Dashboard:", allProducts.length);
     }
 
     setProducts(allProducts);
@@ -59,14 +59,28 @@ export default function InventoryDashboard() {
           if (shopifyProducts && shopifyProducts.length > 0) {
             allProducts = shopifyProducts;
           }
+        } else {
+          allProducts = getProducts();
         }
 
         setProducts(allProducts);
       }
     };
 
+    const handleProductsUpdated = () => {
+      if (!isShopifyConnected()) {
+        const local = getProducts();
+        console.log("📦 productsUpdated event: reloading local products:", local.length);
+        setProducts(local);
+      }
+    };
+
     window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
+    window.addEventListener("productsUpdated", handleProductsUpdated);
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("productsUpdated", handleProductsUpdated);
+    };
   }, []);
 
   // Calculate real data from products
