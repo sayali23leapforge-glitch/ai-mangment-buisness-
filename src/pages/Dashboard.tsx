@@ -249,13 +249,12 @@ export default function Dashboard() {
     };
 
     const handleSalesUpdated = () => {
-      if (dataSource !== "square" && dataSource !== "shopify") {
-        const manualProducts = getFromUserStorage<Product[]>("products") || [];
-        const manualSales = getFromUserStorage<Sale[]>("sales") || [];
-        console.log("Sales loaded:", manualSales);
-        setProducts(manualProducts);
-        setSales(manualSales);
-      }
+      // Always reload manual data when a sale is recorded, regardless of dataSource
+      const manualProducts = getFromUserStorage<Product[]>("products") || [];
+      const manualSales = getFromUserStorage<Sale[]>("sales") || [];
+      console.log("Sales loaded:", manualSales);
+      setProducts(manualProducts);
+      setSales(manualSales);
     };
 
     window.addEventListener("storage", handleStorageChange);

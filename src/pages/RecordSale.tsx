@@ -27,11 +27,22 @@ export default function RecordSale() {
     return t ? Number(t) : 15;
   });
 
-  // Load products on mount
+  // Load products and existing sales on mount
   useEffect(() => {
     const loadedProducts = getProducts();
     setProducts(loadedProducts);
-    
+
+    // Load existing sales history from user-specific storage
+    const existingSales = getFromUserStorage<any[]>("sales") || [];
+    const mapped = existingSales.map((s: any) => ({
+      id: s.id || String(s.timestamp),
+      date: s.date || new Date(s.timestamp).toLocaleDateString(),
+      product: s.productName || s.product || "Unknown",
+      quantity: s.quantity || 1,
+      total: s.total || s.amount || 0,
+    }));
+    setCompletedSales(mapped);
+
     const storedProfile = localStorage.getItem("userProfile");
     if (storedProfile) setUserProfile(JSON.parse(storedProfile));
   }, []);
