@@ -6,6 +6,7 @@ import Sidebar from "../components/Sidebar";
 import { useRole } from "../context/RoleContext";
 import { hasPermission } from "../utils/rolePermissions";
 import { useSubscription } from "../context/SubscriptionContext";
+import { getFromUserStorage, setInUserStorage } from "../utils/storageUtils";
 import "../styles/ManageExpenses.css";
 
 interface Expense {
@@ -61,9 +62,9 @@ export default function ManageExpenses() {
 
   // Load expenses from localStorage
   useEffect(() => {
-    const stored = localStorage.getItem("businessExpenses");
+    const stored = getFromUserStorage<Expense[]>("businessExpenses");
     if (stored) {
-      setExpenses(JSON.parse(stored));
+      setExpenses(stored);
     }
 
     const storedProfile = localStorage.getItem("userProfile");
@@ -73,7 +74,7 @@ export default function ManageExpenses() {
   // Save expenses to localStorage
   const saveExpenses = (updatedExpenses: Expense[]) => {
     setExpenses(updatedExpenses);
-    localStorage.setItem("businessExpenses", JSON.stringify(updatedExpenses));
+    setInUserStorage("businessExpenses", updatedExpenses);
     // Notify other components
     window.dispatchEvent(new CustomEvent("expensesUpdated"));
   };
