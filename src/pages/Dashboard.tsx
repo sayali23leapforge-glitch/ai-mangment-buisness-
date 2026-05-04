@@ -196,9 +196,12 @@ export default function Dashboard() {
           }
         } 
         else {
-          console.log(`   ❌ Selected source NOT connected - showing empty state`);
-          setProducts([]);
-          setSales([]);
+          // Manual data source — load from user-specific localStorage
+          const manualProducts = getFromUserStorage<Product[]>("products") || [];
+          const manualSales = getFromUserStorage<Sale[]>("sales") || [];
+          console.log(`   📋 Manual data loaded: ${manualProducts.length} products, ${manualSales.length} sales`);
+          setProducts(manualProducts);
+          setSales(manualSales);
         }
       } catch (error) {
         console.error("❌ Error loading Dashboard data:", error);
@@ -245,11 +248,23 @@ export default function Dashboard() {
       }
     };
 
+    const handleSalesUpdated = () => {
+      if (dataSource !== "square" && dataSource !== "shopify") {
+        const manualProducts = getFromUserStorage<Product[]>("products") || [];
+        const manualSales = getFromUserStorage<Sale[]>("sales") || [];
+        console.log("Sales loaded:", manualSales);
+        setProducts(manualProducts);
+        setSales(manualSales);
+      }
+    };
+
     window.addEventListener("storage", handleStorageChange);
     window.addEventListener("squareDataSynced", handleSquareDataSynced);
+    window.addEventListener("salesUpdated", handleSalesUpdated);
     return () => {
       window.removeEventListener("storage", handleStorageChange);
       window.removeEventListener("squareDataSynced", handleSquareDataSynced);
+      window.removeEventListener("salesUpdated", handleSalesUpdated);
     };
   }, [dataSource]);
 
@@ -504,8 +519,8 @@ export default function Dashboard() {
   }, [financialMetrics.operatingExpenses, financialMetrics.totalRevenue, financialMetrics.grossProfit, products, sales]);
 
   const upcoming = useMemo(() => {
-    // Get real upcoming tax deadlines from localStorage
-    const taxRateStored = localStorage.getItem("tax_corporate");
+    // Get real upcoming tax deadlines from user-specific storage
+    const taxRateStored = getFromUserStorage<number>("tax_corporate");
     const taxRate = taxRateStored ? Number(taxRateStored) : 12;
     
     // Calculate quarterly deadlines for the current year
