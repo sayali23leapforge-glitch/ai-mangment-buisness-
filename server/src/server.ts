@@ -190,6 +190,10 @@ app.post('/create-checkout-session', async (req: Request, res: Response) => {
       },
       allow_promotion_codes: true,
       billing_address_collection: 'auto',
+      subscription_data: {
+        trial_period_days: 14,
+      },
+      customer_email: req.body.email || undefined,
     });
 
     logger.info(`[${requestId}] ✅ Stripe session created`);
